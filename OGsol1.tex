@@ -1,0 +1,61 @@
+\documentclass[11pt]{scrartcl}
+\usepackage{graphicx} % Required for inserting images
+\usepackage[sexy,hints]{evan}
+\usepackage{asymptote}
+
+\title{OG! Harmonic Motion Basics.}
+\author{OG Sanskar OG Gupta}
+\date{March 2025}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+OG!
+\section{Problems}
+\begin{problem*}
+     At what maximum value of $N$ can each unit square of an $N × N$ chessboard be painted red or blue in such a way that the four unit squares at the intersection of any two columns and any two rows of this board are not all the same colour?
+\end{problem*}
+  
+\paragraph{Solution:}
+  We claim the answer is $n=4$, achieved by the construction
+
+\begin{asy}
+import graph;
+size(200);
+
+string rows[4] = {"BBRR", "BRBR", "RBRB", "RRBB"};
+
+for (int i = 0; i < 4; ++i) {
+  for (int j = 0; j < 4; ++j) {
+    char cell = rows[i][j];
+    pen cellColor = (cell == 'B' ? blue : red);
+    filldraw(
+      (j, 3 - i) -- 
+      (j+1, 3 - i) -- 
+      (j+1, 4 - i) -- 
+      (j, 4 - i) -- 
+      cycle,
+      cellColor,
+      black
+    );
+  }
+}
+
+for (int i = 0; i <= 4; ++i) {
+  draw((0,i) -- (4,i));
+  draw((i,0) -- (i,4));
+}
+\end{asy}
+\textbf{Proof that this is the maximum:}
+Assume for $N \geq 5$. We consider the bottom most row, By PHP, there are at least the 3 squares of the same colour. WLOG, let it be blue. Let these 3 squares collectively be called $OG-cells$.\\\\ Now we completely focus on the 3 columns that contain the three squares , since $N \geq 5$, there are atleast $5$ rows. Label the rows from bottom to top as $1 ... n$. Now, Row one contains 3 blue squares, exactly above these 3 blue squares(meaning in the same column as the 3 squares) in any row(except row 1)there must be at maximum 1 blue square( $as$ $if$ $there$ $are$ $2$ $blue$ $squares$ $,$ $then$ the intersections of that row and row 1 with respective columns of the 2 blue squares would all be blue). Hence in any other row there are 2 red 1 blue or all 3 red squares exactly above the $OG-cells$ in the bottom row. 
+Now since $N \geq 5$, therefore we have at least 4 other rows other than row 1 i.e. Row 2,3,4,5 exist.\\\\
+
+\textbf{\textit{Case 1:}} If in any of Row $2,3,4,5$ the three squares above the $OG-cells$ are all red\\\\
+WLOG, let the row be ROW 2, then In $Row 3$, two of the three squares above the $OG-cells$, must be of the same colour(By PHP). \\\\However this is not possible, as then we would group $2 -red$ squares with any 2 of the cells of ROW 2 which are above the $OG-cells$ and $2-blue$ squares with any 2 of the $OG-cells$. 
+
+\textbf{\textit{Case 2:}} In none of Row $2,3,4,5$ the three squares above the $OG-cells$ are all red,\\\\
+then in each of $ROW 2,3,4,5$, in the three squares above the $OG-cells$, 2 of them are $red$ and 1 is $blues$. \\We know that there are 3 permutations of $2 Reds$ and $1 Blue$, but we have $4$ rows($2,3,4$ and $5$). \\
+Hence in at least 2 rows there must be the same permutation of the 3 squares above the $OG-cells$, but then we would have 2 rows and 2 columns whose intersection squares all are red.
+    
