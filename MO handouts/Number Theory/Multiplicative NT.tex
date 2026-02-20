@@ -1,0 +1,200 @@
+\documentclass[11pt]{scrartcl}
+\usepackage{graphicx} % Required for inserting images
+
+
+
+\usepackage{graphicx} % Required for inserting images
+\usepackage[sexy,hints]{evan}
+\usepackage{tikz}
+\usepackage{animate}
+\usepackage{siunitx}
+\title{OG! Multiplicative functions }
+\author{Sanskar Gupta}
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+OG! 
+\section{Definitions}
+\begin{definition}
+    A function $f$ is called arithmetic if and only if its domain is $N$ and range is a subset of $c$. Essentially $f:N\mapsto C$
+\end{definition}
+   \begin{definition}
+    An arithmetic function $f$ is called multiplicative if and only if $f(m).f(n)=f(mn)$ for all 
+    co prime $(m,n)$
+\end{definition}
+   \begin{definition}
+    An arithmetic function $f$ is called completely multiplicative if and only if $f(m).f(n)=f(mn)$ for all 
+ $(m,n)$
+\end{definition}
+   \begin{definition}
+    An arithmetic function $f$ is called  additive if and only if $f(m)+f(n)=f(mn)$ for all 
+ coprime $(m,n)$
+\end{definition}
+   \begin{definition}
+    An arithmetic function $f$ is called completely additive if and only if $f(m)+f(n)=f(mn)$ for all 
+ $(m,n)$
+\end{definition}
+  \begin{definition}
+   $\phi(n)$(known as euler's totient function) denotes the number of integers coprime to $n$ less than or equal to  $n$. 
+
+\end{definition}
+  \begin{definition}
+   $d(n)$ denotes the no. of divisors of $n$. 
+
+\end{definition}
+\begin{definition}
+   $\tau(n) = \sum_{d|n} d$
+\end{definition}
+\begin{definition}
+   Mobius function is defined as \\ $\mu(n) = \underbrace \prod_{p|n, p \in P}  - (v_p(n) \pmod2)[n>1], \\ = 1[n=1]$.\\ Where $P$ denotes the set of all primes 
+\end{definition}
+\begin{definition}
+    Dirchlet delta function is defined as $\delta(n)= 1 ( n=1) , = 0(n>1)$
+\end{definition}
+\section{Some Results}
+\subsection*{Prove it yourself!!!}
+$P $ denotes the set of all primes. 
+\begin{itemize}[$\blacksquare$]
+    \item 
+
+$$\phi(n)= n\prod_{p|n, ,p\in P}(\frac{p-1}{p})$$ for $n>1$. 
+\item $$d(n)= \prod_{p \in P} (v_p(n)+1)$$
+\item $$ \mu(n)= 0( \text{if $n$ is not square free })$$ 
+     $$ \mu(n)= (-1)^k( \text{if $n$ is  square free }), \text{ $k$ denotes the number of primes dividing $n$}$$ 
+     $$ \mu(n)= 1( \text{if $n=1$ })$$
+\item $$\tau(n)= \prod_{p|n, ,p\in P} \frac{p^{v_p(n)+1}-1}{p-1}$$
+\end{itemize}
+\begin{lemma*}
+    OG! If $f$ is a multiplicative function, then $\sum_ {d|n} f(d)= q(n)$ is also multiplicative 
+\end{lemma*}
+\begin{proof} Let $D_k$ denote the set of divisors of $k$
+    Let $m,n$ be 2 co-prime integers. We have the following main claim:
+\begin{claim*}
+    Any divisor of $mn $ can be uniquely represented as product of 2 numbers one of which is an element of $d_m$ and the other is an element of $d_n$.
+\end{claim*}
+    OG! We claim more specifically that for any $d|mn$, $d=xy$ where $x= gcd(d,m)$, $y= gcd(d,n)$
+    proof for this is left to the reader. 
+on the other hand we see that $x|m, y|n \implies xy|mn$. \\ 
+Hence, We can easily say that $D_{mn}= D_m  \times D_n$,  $\times$ denotes the set of the product of the elements of the elements of the cartesian product. \\\\
+So, we can say $$q(m)q(n)= (\sum_ {d|n} f(d))((\sum_ {d|m} f(d))= \sum_ {d_1|n, d_2|m} f(d_1d_2)= \sum_{{d_1,d_2} \in D_m \times  D_n  } f(d_1d_2)= \sum_{d|mn} f(d)= q(mn)$$ as desired.
+\end{proof}
+\begin{ques}
+Can you use this lemma to prove that $\tau$ is multiplicative?
+\end{ques}
+
+\begin{proposition*}
+$\phi, d, \delta, \tau, \mu$ all are multiplicative functions.
+\end{proposition*}
+\begin{proof}
+I will give the proof for $\phi, d$ rest are exercises.\\\\
+\textbf{For $d$:}  I will present 2 proofs:\\
+\textbf{\textit{1.}} let $(m,n)=1$$;m= p_1^{\alpha_1} . p_2^{\alpha_2}.  p_3^{\alpha_3} \cdots p_k^{\alpha_k}; n= q_1^{\beta_1} .  q_2^{\beta_2}.  q_3^{\beta_3} \cdots q_r^{\beta_r} $ \\
+since $m,n$ are co-prime, the  prime factorisation of  $mn$= $ p_1^{\alpha_1} . p_2^{\alpha_2}.  p_3^{\alpha_3} \cdots p_k^{\alpha_k}. q_1^{\beta_1} .  q_2^{\beta_2}.  q_3^{\beta_3} \cdots q_r^{\beta_r} $ \\\\
+Thus, $d(mn)= (\alpha_1+1)(\alpha_2+1) . \ldots (\alpha_k+1)(\beta_1+1)(\beta_2+1) . \ldots (\beta_r+1)=d(m)d(n)$ $\blacksquare$ \\\\
+\textbf{\textit{2.}} Define $f(n)= 1 $ for all positive integers $n$.Obviously, $f(n)$ is multiplicative.\\\\
+$d(n)= \sum_{d|n}f(n)$. Since $f$ is multiplicative, by our previous mentioned lemma we do have that $d$ is multiplicative as desired. \\\\
+For $\phi$:      
+Consider 2 positive integer$m,n$ such that $(m,n)=1$
+a number is co-prime to $mn$ if and only if it is co- prime to both $m,n$. \\
+A number is co-prime to $m$ if and only if  it is among the $\phi(m)$ coprime residues $\pmod m$.\\
+A number is co-prime to $m$ if and only if  it is among the $\phi(n)$ coprime residues $\pmod n$.\\
+Thus, by Chinese remainder theorem, A number is co-prime to $mn$ if and only if it is among the $\phi(m)\phi(n)$ residues $\pmod {mn}$.\\\\
+Thus, in the range $[1,mn]$ exactly $\phi(m)\phi(n)$ numbers are co-prime to $mn$. In other words, $\phi(mn)= \phi(m)\phi(n)$
+    
+\end{proof}
+
+\section{Dirchlet Convolution and Mobius Inversion}
+OG! For any 2 arithmetic functions, $f,g$, the dirchlet convolution $f*g$ is defined as:\\
+$$f*g(n)= \sum_{d|n}f(d)g(\frac nd)$$. \\
+So dirchlet convolution is an operation on 2 arithmetic functions, just like $+,-, \times,\div$ are operations on real numbers.\\
+\ques Can you see that the dirchlet convolution is commutative? \\
+i.e $f*g=g*f$
+\begin{lemma*}[OG!]
+    Dirchlet Convolution is associative i.e. \\
+    $$(f*g)* h= f*(g*h)$$
+\end{lemma*}
+\proof observe that both sides are equal to $$ \sum_{xyz=n ; x,y,z \in N}f(x)g(y)h(z)$$
+\begin{proposition*}[Relation of function on the basis of dirchlet convolution] \hspace{5cm}
+\begin{itemize}[$\blacksquare$] 
+
+    \item  $\mu*1=\delta$
+    \item  $\phi*1=id$
+    \item  $id*1= \tau$
+    \item  $1*1=d$
+    \item  $n* d= \tau*1$
+    \item  $f* \delta = f$(i.e dirchlet delta function is the identity of dirchlet convolution)
+\end{itemize}
+
+
+\end{proposition*}
+\begin{example}
+\textbf{Prove that the dirchlet convolution of 2 multiplicative functions is multiplicative}.\\\\
+Let $f,g$ be 2 multiplicative functions. and let $(m,n)$ be 2 co-prime naturals. \\  We have that, $$f*g(mn)= \sum_{d|mn}f(d)g(\frac {mn}{d})=\sum_{d_1|m, d_2|n}f(d_1d_2)g(\frac m{d_1} \cdot \frac n{d_2})=$$$$\sum_{d_1|m, d_2|n}f(d_1)f(d_2)g(\frac m{d_1})  g(\frac n{d_2})= \sum_{d_1|m}\sum_{d_2|n}f(d_1)f(d_2)g(\frac m{d_1}) g(\frac n{d_2}))=$$$$\sum_{d_1|m}f(d_1)g(\frac m{d_1})\sum_{d_2|n} g(\frac n{d_2})f(d_2)= f*g(n)\sum_{d_1|m}f(d_1)g(\frac m{d_1})= $$$$(f*g(n))\cdot(f*g(m))$$
+\end{example}
+
+
+Now, as we deal with dirchlet convolution, it becomes clear that it is an operator between two arithmetic functions.\\ But, if there is an operator then we must have a way to get the original function back. Or in other words the question is to find $f$ in terms of $g$ and $h$ such that \\ $f*g=h $. We find it as follows:
+$(h*g^{-1})= (f*g)*g^{-1}=f*(g*g^{-1})= f $ \\
+Where $g^{-1}$ is a function such that $g^{-1}g= \delta $. If $g=1,$ then $g^{-1}= \mu$. \\\\ So if we have that 
+$f*1= g$, then $g*\mu = f*(1*\mu)=f*(\delta )= f  $. \\\\
+This is called \textbf{\textcolor{cyan}{Mobius Inversion}}. 
+
+\newpage
+
+
+\section{Practice Problems:}
+\begin{problem}(IMOSL 2004/N2)
+The function $f$ from the set $\mathbb{N}$ of positive integers into itself is defined by the equality \[f(n)=\sum_{k=1}^{n} \gcd(k,n),\qquad n\in \mathbb{N}.\]
+\begin{itemize}[$\blacksquare$]
+    \item 
+
+ Prove that $f(mn)=f(m)f(n)$ for every two relatively prime ${m,n\in\mathbb{N}}$.
+\item
+ Prove that for each $a\in\mathbb{N}$ the equation $f(x)=ax$ has a solution.
+\item
+ Find all ${a\in\mathbb{N}}$ such that the equation $f(x)=ax$ has a unique solution.
+    \end{itemize}
+\end{problem}
+\begin{problem}
+    For any $n \in \mathbb{N}$, the sum of the nth primitive roots of unity is $\mu(n)$. In other words, prove that 
+
+$$\mu (n) = \sum_{1\leq k \leq n
+\gcd(k,n)=1}e^{
+\frac{2\pi ik}{n}}$$
+\end{problem}
+\begin{problem*}(USA TST 2010/5)
+    Define the sequence $a_1, a_2, a_3, \ldots$ by $a_1 = 1$ and, for $n > 1$,
+\[a_n = a_{\lfloor n/2 \rfloor} + a_{\lfloor n/3 \rfloor} + \ldots + a_{\lfloor n/n \rfloor} + 1.\]
+Prove that there are infinitely many $n$ such that $a_n \equiv n \pmod{2^{2010}}$
+\end{problem*}
+\begin{problem*}(Turkey NMO(Round 2) 2018/3)
+    A sequence $a_1,a_2,\dots$ satisfy 
+$$
+\sum_{i =1}^n a_{\lfloor \frac{n}{i}\rfloor }=n^{10},
+$$
+for every $n\in\mathbb{N}$.
+Let $c$ be a positive integer. Prove that, for every positive integer $n$,
+$$
+\frac{c^{a_n}-c^{a_{n-1}}}{n}
+$$
+is an integer.
+\end{problem*}
+Define the sequence $a_n$ by
+\[
+\sum_{d \mid n} a_d = 2^n.
+\]
+Prove that $n \mid a_n$.
+\begin{problem*}(Sanskar)
+    Consider any $n \in \mathbb{N}$. \\ $$a_1, a_2 \dots a_{\phi(n)}$$ are the natural numbers less than or equal to $n$, which are co-prime to $n$. Try to find a formula for  
+    $$a_1^m+ a_2^m+ \dots + a_{\phi(n)}^m$$, for a natural number $m$. The formula could be in a non-closed form. 
+\end{problem*}
+\begin{problem*}(China TST 2024/3)
+    Given a positive integer $M.$ For any $n\in\mathbb N_+,$ let $h(n)$ be the number of elements in $[n]$ that are coprime to $M.$ Define $\beta :=\frac {h(M)}M.$ Proof: there are at least $\frac M3$ elements $n$  in $[M],$ satisfy
+$$\left| h(n)-\beta n\right|\le\sqrt{\beta\cdot 2^{\omega(M)-3}}+1.$$
+Here $[n]:=\{1,2,\ldots ,n\}$ for all positive integer $n.$.
+This one is an exceptionally hard problem, so try at your own risk!
+\end{problem*}
+
+\end{document}
