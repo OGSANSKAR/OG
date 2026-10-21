@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARCT — Automated Repository of Canned Theorems</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // STEP 1: Replace these two placeholders with your Supabase Project URL
+  // and publishable/anon key. Never put a service_role/secret key here.
+  const SUPABASE_URL = "https://tbnhxqhmaeggcpghihnp.supabase.co/rest/v1/";
+  const SUPABASE_KEY = "sb_publishable_fzbXB4C1n54IxkaEdoon9w_hobwFuuq";
+</script>
+<script>
+  window.MathJax = { tex: { inlineMath: [['\\(','\\)'], ['$', '$']], displayMath: [['\\[','\\]'], ['$$','$$']] } };
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+:root{--ink:#172033;--muted:#657089;--line:#dbe1ea;--paper:#f6f8fc;--blue:#254f9e;--blue2:#eaf0ff;--red:#9b2c2c}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif}
+header{background:#142747;color:white;padding:25px max(20px,calc((100% - 1050px)/2))}
+header h1{margin:0;font-size:1.8rem}header p{margin:5px 0 0;color:#dbe7ff}
+main{max-width:1050px;margin:25px auto;padding:0 16px}.panel{background:white;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:18px}
+h2{margin:0 0 12px;font-size:1.25rem}h3{margin:0 0 8px}label{display:block;font-weight:650;margin:10px 0 4px}
+input,textarea,select{width:100%;padding:10px 11px;border:1px solid #c6cedb;border-radius:8px;font:inherit;background:white;color:var(--ink)}
+textarea{min-height:100px;resize:vertical}button{background:var(--blue);color:white;border:0;border-radius:8px;padding:10px 14px;font:inherit;font-weight:650;cursor:pointer;margin:8px 6px 0 0}
+button.secondary{background:#e9edf5;color:var(--ink)}button:disabled{opacity:.55;cursor:not-allowed}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.small{color:var(--muted);font-size:.92rem}.status{padding:10px;border-radius:8px;background:var(--blue2);margin:10px 0;white-space:pre-wrap}.error{background:#fff0f0;color:var(--red)}
+.theorem{border:1px solid var(--line);border-radius:12px;padding:15px;margin:12px 0}.meta{font-size:.88rem;color:var(--muted)}.item{background:#f8faff;border-left:3px solid #9db6ed;padding:10px 12px;margin:9px 0;overflow-wrap:anywhere}.item p{margin:5px 0;white-space:pre-wrap}.actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.actions button{margin:0}.hidden{display:none!important}.tag{display:inline-block;background:#edf1f8;border-radius:99px;padding:2px 9px;font-size:.82rem;margin:2px}
+@media(max-width:650px){.row{grid-template-columns:1fr}header{padding:20px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>ARCT</h1>
+  <p>Automated Repository of Canned Theorems · A collaborative olympiad theorem library</p>
+</header>
+<main>
+  <section class="panel">
+    <h2>Account</h2>
+    <p class="small">Anyone can browse. Sign up or sign in to contribute theorems, insights and proofs. Use an email you can access.</p>
+    <div id="authStatus" class="status">Checking configuration…</div>
+    <div id="authForms">
+      <div class="row">
+        <div><label for="email">Email</label><input id="email" type="email" autocomplete="email" placeholder="you@example.com"></div>
+        <div><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" placeholder="At least 8 characters"></div>
+      </div>
+      <button id="signupBtn">Create account</button><button id="signinBtn" class="secondary">Sign in</button><button id="signoutBtn" class="secondary hidden">Sign out</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Search the theorem library</h2>
+    <label for="search">Search theorem names, statements, topics and tags</label>
+    <input id="search" type="search" placeholder="e.g. Euclid lemma, cyclic quadrilateral, invariants">
+    <div id="count" class="small"></div>
+    <div id="theoremList"><p class="small">Loading theorems…</p></div>
+  </section>
+
+  <section id="addPanel" class="panel hidden">
+    <h2>Add a theorem</h2>
+    <p class="small">Enter the theorem statement clearly, including all hypotheses. Use LaTeX such as <code>\(a^2+b^2=c^2\)</code>. Do not submit copied material unless you have permission or can provide attribution.</p>
+    <label for="thName">Theorem name</label><input id="thName" maxlength="180" placeholder="e.g. Euclid's Lemma">
+    <label for="thStatement">Statement</label><textarea id="thStatement" maxlength="20000" placeholder="Write the complete mathematical statement. LaTeX is supported."></textarea>
+    <div class="row">
+      <div><label for="thTopic">Topic</label><select id="thTopic"><option>Number Theory</option><option>Algebra</option><option>Geometry</option><option>Combinatorics</option><option>Inequalities</option><option>Functional Equations</option><option>Other</option></select></div>
+      <div><label for="thTags">Tags (comma-separated)</label><input id="thTags" maxlength="500" placeholder="primes, divisibility, gcd"></div>
+    </div>
+    <label for="thSource">Source / attribution (optional)</label><input id="thSource" maxlength="1000" placeholder="Book, author, URL, or original contribution">
+    <button id="addTheoremBtn">Submit theorem</button>
+  </section>
+
+  <section class="panel">
+    <h2>How ARCT works</h2>
+    <ol>
+      <li>A theorem has one statement and topic tags.</li>
+      <li>Contributors can add multiple insights explaining intuition, tricks, or applications.</li>
+      <li>Contributors can add multiple proofs, including different methods.</li>
+      <li>LaTeX is rendered for readable mathematics. Contributions are public, so do not include private information.</li>
+    </ol>
+    <p class="small">Initial version: anyone can read; signed-in users can add records. This starter does not yet provide editing, deletion, moderation, voting, or proof verification.</p>
+  </section>
+</main>
+<div id="modalRoot"></div>
+<script>
+(() => {
+  const statusBox = document.getElementById('authStatus');
+  const list = document.getElementById('theoremList');
+  const addPanel = document.getElementById('addPanel');
+  const signupBtn = document.getElementById('signupBtn');
+  const signinBtn = document.getElementById('signinBtn');
+  const signoutBtn = document.getElementById('signoutBtn');
+  const addBtn = document.getElementById('addTheoremBtn');
+  const search = document.getElementById('search');
+  let db = null, currentUser = null, allTheorems = [];
+
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function message(text, bad=false) {
+    statusBox.textContent = text;
+    statusBox.classList.toggle('error', bad);
+  }
+  function refreshAuthUI() {
+    addPanel.classList.toggle('hidden', !currentUser);
+    signupBtn.classList.toggle('hidden', !!currentUser);
+    signinBtn.classList.toggle('hidden', !!currentUser);
+    signoutBtn.classList.toggle('hidden', !currentUser);
+    if (currentUser) message('Signed in as ' + currentUser.email + '. You can contribute.');
+    else message('You are browsing as a guest. Sign in to contribute.');
+  }
+  function renderMath() {
+    if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise().catch(()=>{});
+  }
+  async function loadTheorems() {
+    if (!db) return;
+    list.innerHTML = '<p class="small">Loading…</p>';
+    const {data, error} = await db.from('arct_theorems').select('*').order('created_at', {ascending:false}).limit(300);
+    if (error) {
+      list.innerHTML = '<p class="small">Could not load the theorem list. Check that you ran the SQL setup and entered the correct Supabase settings.</p>';
+      console.error(error); return;
+    }
+    allTheorems = data || [];
+    renderList();
+  }
+  function renderList() {
+    const q = search.value.trim().toLowerCase();
+    const matches = allTheorems.filter(t => [t.name,t.statement,t.topic,t.tags,t.source].join(' ').toLowerCase().includes(q));
+    document.getElementById('count').textContent = `${matches.length} theorem(s) shown`;
+    if (!matches.length) {
+      list.innerHTML = `<p class="small">${allTheorems.length ? 'No matching theorems.' : 'No theorems yet. Sign in and add the first one.'}</p>`;
+      return;
+    }
+    list.innerHTML = matches.map(t => `
+      <article class="theorem">
+        <h3>${esc(t.name)}</h3>
+        <div class="meta">${esc(t.topic || 'Other')} · Added ${new Date(t.created_at).toLocaleDateString()}${t.source ? ' · Source: '+esc(t.source) : ''}</div>
+        <p class="statement">${esc(t.statement).replace(/\n/g,'<br>')}</p>
+        <div>${(t.tags||[]).map(tag=>`<span class="tag">${esc(tag)}</span>`).join('')}</div>
+        <div class="actions" style="margin-top:12px">
+          <button class="secondary" data-action="insight" data-id="${t.id}">Add insight</button>
+          <button class="secondary" data-action="proof" data-id="${t.id}">Add proof</button>
+          <button class="secondary" data-action="show" data-id="${t.id}">View insights & proofs</button>
+        </div>
+        <div id="details-${t.id}"></div>
+      </article>`).join('');
+    renderMath();
+  }
+  async function showDetails(id) {
+    const target = document.getElementById('details-'+id);
+    if (!target) return;
+    target.innerHTML = '<p class="small">Loading contributions…</p>';
+    const [ir, pr] = await Promise.all([
+      db.from('arct_insights').select('*').eq('theorem_id',id).order('created_at',{ascending:true}),
+      db.from('arct_proofs').select('*').eq('theorem_id',id).order('created_at',{ascending:true})
+    ]);
+    if (ir.error || pr.error) { target.textContent='Could not load contributions.'; return; }
+    const insights = ir.data||[], proofs=pr.data||[];
+    target.innerHTML = `<h4>Insights (${insights.length})</h4>` +
+      (insights.length ? insights.map(x=>`<div class="item"><strong>${esc(x.title)}</strong><p>${esc(x.content).replace(/\n/g,'<br>')}</p><div class="meta">By ${esc(x.author_name||'Contributor')} · ${new Date(x.created_at).toLocaleDateString()}</div></div>`).join('') : '<p class="small">No insights yet.</p>') +
+      `<h4>Proofs (${proofs.length})</h4>` +
+      (proofs.length ? proofs.map(x=>`<div class="item"><strong>${esc(x.title)}</strong><p class="meta">${esc(x.method||'Proof')}</p><p>${esc(x.content).replace(/\n/g,'<br>')}</p><div class="meta">By ${esc(x.author_name||'Contributor')} · ${new Date(x.created_at).toLocaleDateString()}</div></div>`).join('') : '<p class="small">No proofs yet.</p>');
+    renderMath();
+  }
+  function openContribution(kind,id) {
+    if (!currentUser) { message('Please sign in before contributing.',true); return; }
+    const isInsight = kind === 'insight';
+    const root = document.getElementById('modalRoot');
+    root.innerHTML = `<div style="position:fixed;inset:0;background:#0008;display:grid;place-items:center;padding:16px;z-index:10">
+      <section class="panel" style="width:min(650px,100%);max-height:90vh;overflow:auto;margin:0">
+        <h2>Add ${isInsight?'an insight':'a proof'}</h2>
+        <label for="contribTitle">${isInsight?'Insight title':'Proof title'}</label>
+        <input id="contribTitle" maxlength="180" placeholder="${isInsight?'Key observation':'Proof using induction, contradiction, etc.'}">
+        ${isInsight?'':'<label for="contribMethod">Proof method (optional)</label><input id="contribMethod" maxlength="120" placeholder="e.g. Bézout identity, induction, inversion">'}
+        <label for="contribContent">${isInsight?'Insight':'Proof'}</label>
+        <textarea id="contribContent" maxlength="30000" placeholder="Write clearly. LaTeX is supported." style="min-height:190px"></textarea>
+        <div class="actions"><button id="saveContribution">Submit</button><button class="secondary" id="cancelContribution">Cancel</button></div>
+        <p class="small">Your account email is not displayed publicly.</p>
+      </section></div>`;
+    document.getElementById('cancelContribution').onclick=()=>root.innerHTML='';
+    document.getElementById('saveContribution').onclick=async()=>{
+      const title=document.getElementById('contribTitle').value.trim();
+      const content=document.getElementById('contribContent').value.trim();
+      if(!title||!content){alert('Please fill in both the title and content.');return;}
+      const row={theorem_id:id,title,content,author_id:currentUser.id,author_name:(currentUser.user_metadata?.display_name||currentUser.email?.split('@')[0]||'Contributor')};
+      let result;
+      if(isInsight) result=await db.from('arct_insights').insert(row);
+      else { row.method=document.getElementById('contribMethod').value.trim(); result=await db.from('arct_proofs').insert(row); }
+      if(result.error){alert('Could not save: '+result.error.message);return;}
+      root.innerHTML=''; await showDetails(id); message('Contribution saved.');
+    };
+  }
+  document.addEventListener('click',e=>{
+    const b=e.target.closest('button[data-action]'); if(!b)return;
+    const id=b.dataset.id, action=b.dataset.action;
+    if(action==='insight'||action==='proof')openContribution(action,id);
+    if(action==='show')showDetails(id);
+  });
+  search.addEventListener('input',renderList);
+  signupBtn.onclick=async()=>{
+    if(!db)return;
+    const email=document.getElementById('email').value.trim(),password=document.getElementById('password').value;
+    if(!email||password.length<8){message('Enter a valid email and a password of at least 8 characters.',true);return;}
+    const {data,error}=await db.auth.signUp({email,password});
+    if(error){message(error.message,true);return;}
+    if(data.session){currentUser=data.user;refreshAuthUI();}
+    else message('Account request received. Check your email for a confirmation link, then return here and sign in.');
+  };
+  signinBtn.onclick=async()=>{
+    if(!db)return;
+    const email=document.getElementById('email').value.trim(),password=document.getElementById('password').value;
+    const {data,error}=await db.auth.signInWithPassword({email,password});
+    if(error){message(error.message,true);return;}
+    currentUser=data.user;refreshAuthUI();
+  };
+  signoutBtn.onclick=async()=>{await db.auth.signOut();currentUser=null;refreshAuthUI();};
+  addBtn.onclick=async()=>{
+    const name=document.getElementById('thName').value.trim(),statement=document.getElementById('thStatement').value.trim();
+    if(!currentUser){message('Sign in first.',true);return;}
+    if(!name||!statement){alert('Please enter a theorem name and statement.');return;}
+    const tags=document.getElementById('thTags').value.split(',').map(x=>x.trim()).filter(Boolean).slice(0,30);
+    const {error}=await db.from('arct_theorems').insert({name,statement,topic:document.getElementById('thTopic').value,tags,source:document.getElementById('thSource').value.trim(),author_id:currentUser.id});
+    if(error){message('Could not save theorem: '+error.message,true);return;}
+    ['thName','thStatement','thTags','thSource'].forEach(id=>document.getElementById(id).value='');
+    message('Theorem saved successfully.'); await loadTheorems(); window.scrollTo({top:0,behavior:'smooth'});
+  };
+  if(SUPABASE_URL.includes('PASTE_')||SUPABASE_KEY.includes('PASTE_')){
+    message('Setup needed: create a Supabase project, run arct_setup.sql, then replace the two configuration placeholders in this file.',true);
+    list.innerHTML='<p class="small">The database is not connected yet.</p>'; return;
+  }
+  try {
+    db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+    db.auth.getSession().then(({data})=>{currentUser=data.session?.user||null;refreshAuthUI();});
+    db.auth.onAuthStateChange((_event,session)=>{currentUser=session?.user||null;refreshAuthUI();});
+    loadTheorems();
+  } catch(e) { message('Could not start ARCT: '+e.message,true); }
+})();
+</script>
+</body>
+</html>
