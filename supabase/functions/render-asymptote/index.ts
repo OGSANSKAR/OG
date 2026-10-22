@@ -42,7 +42,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const upstream = await fetch("https://asymptote.ualberta.ca:10007/?f=svg", {
+    const upstream = await fetch("http://asymptote.ualberta.ca:10007/?f=svg", {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=UTF-8" },
       body: source,
