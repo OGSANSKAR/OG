@@ -194,20 +194,21 @@ function renderPlainText(text) {
     let matches = allTheorems.filter(t => [t.name,t.statement,t.topic,(t.tags||[]).join(' '),t.source].join(' ').toLowerCase().includes(q));
     if (selectedTheoremId) matches = matches.filter(t => String(t.id) === String(selectedTheoremId));
     document.getElementById('count').textContent = selectedTheoremId ? 'Selected theorem · '+matches.length+' shown' : (q ? matches.length+' matching theorem(s)' : allTheorems.length+' theorem(s) · Search to narrow the list');
-    if (!matches.length) {
-      list.innerHTML = '<p class="small">'+(allTheorems.length ? 'No matching theorems. Try another search.' : 'No theorems yet. Sign in and add the first one.')+'</p>';
+    if (!selectedTheoremId) {
+      list.innerHTML = '<p class="small">'+(allTheorems.length ? 'Search above and select a theorem from the dropdown to view it.' : 'No theorems yet. Sign in and add the first one.')+'</p>';
       return;
     }
-    list.innerHTML = (selectedTheoremId ? '<button class="secondary" data-action="clear-selection">← Back to all theorems</button>' : '') + matches.map(t => {
-      const id = String(t.id), expanded = expandedTheorems.has(id);
+    if (!matches.length) {
+      list.innerHTML = '<p class="small">No matching theorem. Try another search.</p>';
+      return;
+    }
+    list.innerHTML = matches.map(t => {
+      const id = String(t.id), expanded = true;
       return `
       <article class="theorem">
         <h3>${esc(t.name)}</h3>
         <div class="meta">${esc(t.topic || 'Other')} · Added ${new Date(t.created_at).toLocaleDateString()}${t.source ? ' · Source: '+esc(t.source) : ''}</div>
-        <div class="actions" style="margin-top:10px">
-          <button class="secondary" data-action="toggle-theorem" data-id="${esc(id)}">${expanded ? 'Close theorem ▲' : 'Open theorem ▼'}</button>
-        </div>
-        <div id="theorem-content-${esc(id)}" class="${expanded ? '' : 'hidden'}">
+        <div id="theorem-content-${esc(id)}">
           <p class="statement">${renderContent(t.statement)}</p>
           <div>${(t.tags||[]).map(tag=>`<span class="tag">${esc(tag)}</span>`).join('')}</div>
           <div class="actions" style="margin-top:12px">
@@ -219,6 +220,7 @@ function renderPlainText(text) {
           <div id="insights-${esc(id)}" class="${openSections.has('insights-'+id) ? '' : 'hidden'}"></div>
           <div id="proofs-${esc(id)}" class="${openSections.has('proofs-'+id) ? '' : 'hidden'}"></div>
         </div>
+        <div class="actions" style="margin-top:12px"><button class="secondary" data-action="clear-selection">← Clear selection</button></div>
       </article>`;
     }).join('');
     renderMath();
@@ -286,6 +288,7 @@ function renderPlainText(text) {
       const chosen = allTheorems.find(t=>String(t.id)===String(selectedTheoremId));
       if (chosen) search.value = chosen.name;
       searchSuggestions.classList.add('hidden');
+      expandedTheorems.clear(); openSections.clear();
       expandedTheorems.add(String(selectedTheoremId));
       renderList();
       return;
@@ -293,13 +296,6 @@ function renderPlainText(text) {
     const b=e.target.closest('button[data-action]'); if(!b)return;
     const id=b.dataset.id, action=b.dataset.action;
     if(action==='clear-selection') { selectedTheoremId=null; search.value=''; expandedTheorems.clear(); openSections.clear(); renderSearchSuggestions(); renderList(); return; }
-    if(action==='toggle-theorem') {
-      if(expandedTheorems.has(String(id))) {
-        expandedTheorems.delete(String(id));
-        openSections.delete('insights-'+id); openSections.delete('proofs-'+id);
-      } else expandedTheorems.add(String(id));
-      renderList(); return;
-    }
     if(action==='insight'||action==='proof') openContribution(action,id);
     if(action==='insights'||action==='proofs') showDetails(id,action);
   });
