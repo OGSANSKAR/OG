@@ -26,7 +26,7 @@ input,textarea,select{width:100%;padding:10px 11px;border:1px solid #c6cedb;bord
 textarea{min-height:100px;resize:vertical}button{background:var(--blue);color:white;border:0;border-radius:8px;padding:10px 14px;font:inherit;font-weight:650;cursor:pointer;margin:8px 6px 0 0}
 button.secondary{background:#e9edf5;color:var(--ink)}button:disabled{opacity:.55;cursor:not-allowed}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.small{color:var(--muted);font-size:.92rem}.status{padding:10px;border-radius:8px;background:var(--blue2);margin:10px 0;white-space:pre-wrap}.error{background:#fff0f0;color:var(--red)}
-.theorem{border:1px solid var(--line);border-radius:12px;padding:15px;margin:12px 0}.meta{font-size:.88rem;color:var(--muted)}.item{background:#f8faff;border-left:3px solid #9db6ed;padding:10px 12px;margin:9px 0;overflow-wrap:anywhere}.item p{margin:5px 0;white-space:pre-wrap}.actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.actions button{margin:0}.hidden{display:none!important}.tag{display:inline-block;background:#edf1f8;border-radius:99px;padding:2px 9px;font-size:.82rem;margin:2px}
+.theorem{border:1px solid var(--line);border-radius:12px;padding:15px;margin:12px 0}.meta{font-size:.88rem;color:var(--muted)}.item{background:#f8faff;border-left:3px solid #9db6ed;padding:10px 12px;margin:9px 0;overflow-wrap:anywhere}.item p{margin:5px 0;white-space:pre-wrap}.item a{color:#254f9e;text-decoration:underline;overflow-wrap:anywhere}.asy-block{border:1px solid var(--line);border-radius:8px;padding:10px;margin:10px 0;background:#fff}.asy-block pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f5f9;padding:10px;border-radius:6px;overflow:auto}.asy-block code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.9rem}.actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.actions button{margin:0}.hidden{display:none!important}.tag{display:inline-block;background:#edf1f8;border-radius:99px;padding:2px 9px;font-size:.82rem;margin:2px}
 @media(max-width:650px){.row{grid-template-columns:1fr}header{padding:20px}}
 </style>
 </head>
@@ -98,29 +98,31 @@ button.secondary{background:#e9edf5;color:var(--ink)}button:disabled{opacity:.55
 
 function renderContent(value) {
   const text = String(value ?? '');
-  const urlPattern = /https?:\/\/[^\s<>"']+/gi;
+  const asyPattern = /^```asy[ \\t]*\\r?\\n([\\s\\S]*?)\\r?\\n```[ \\t]*$/gm;
   let html = '', last = 0, match;
-
+  while ((match = asyPattern.exec(text)) !== null) {
+    html += renderPlainText(text.slice(last, match.index));
+    const code = match[1];
+    html += '<div class="asy-block"><strong>Asymptote source</strong><pre><code>' + esc(code) + '</code></pre>' +
+      '<p><a href="https://asymptote.ualberta.ca/" target="_blank" rel="noopener noreferrer">Open Asymptote Web App to render this code</a></p></div>';
+    last = match.index + match[0].length;
+  }
+  html += renderPlainText(text.slice(last));
+  return html;
+}
+function renderPlainText(text) {
+  const urlPattern = /https?:\\/\\/[^\\s<>"']+/gi;
+  let html = '', last = 0, match;
   while ((match = urlPattern.exec(text)) !== null) {
-    let url = match[0];
-    let end = url.length;
-
+    let url = match[0], end = match[0].length;
     while (end > 0 && /[.,;:!?)]/.test(url[end - 1])) end--;
-
     const cleanUrl = url.slice(0, end);
-    html += esc(text.slice(last, match.index)).replace(/\n/g, '<br>');
-
-    if (cleanUrl) {
-      const safeUrl = esc(cleanUrl);
-      html += '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer">' + safeUrl + '</a>';
-    }
-
+    html += esc(text.slice(last, match.index)).replace(/\\n/g, '<br>');
+    if (cleanUrl) { const safeUrl = esc(cleanUrl); html += '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer">' + safeUrl + '</a>'; }
     html += esc(url.slice(end));
     last = match.index + url.length;
   }
-
-  html += esc(text.slice(last)).replace(/\n/g, '<br>');
-  return html;
+  return html + esc(text.slice(last)).replace(/\\n/g, '<br>');
 }
   function message(text, bad=false) {
     statusBox.textContent = text;
