@@ -183,9 +183,12 @@ function renderPlainText(text) {
   }
   function renderSearchSuggestions() {
     const q = search.value.trim().toLowerCase();
-    if (!q) { searchSuggestions.classList.add('hidden'); searchSuggestions.innerHTML=''; return; }
-    const matches = allTheorems.filter(t => [t.name,t.statement,t.topic,(t.tags||[]).join(' '),t.source].join(' ').toLowerCase().includes(q)).slice(0,12);
-    if (!matches.length) { searchSuggestions.innerHTML='<p class="small" style="padding:8px 12px">No matching theorems.</p>'; searchSuggestions.classList.remove('hidden'); return; }
+    const matches = allTheorems.filter(t => !q || [t.name,t.statement,t.topic,(t.tags||[]).join(' '),t.source].join(' ').toLowerCase().includes(q)).slice(0,50);
+    if (!matches.length) {
+      searchSuggestions.innerHTML='<p class="small" style="padding:8px 12px">No matching theorems.</p>';
+      searchSuggestions.classList.remove('hidden');
+      return;
+    }
     searchSuggestions.innerHTML = matches.map(t=>'<button type="button" role="option" data-pick-theorem="'+esc(t.id)+'">'+esc(t.name)+' <span class="meta">· '+esc(t.topic||'Other')+'</span></button>').join('');
     searchSuggestions.classList.remove('hidden');
   }
