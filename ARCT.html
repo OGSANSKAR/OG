@@ -26,7 +26,7 @@ input,textarea,select{width:100%;padding:10px 11px;border:1px solid #c6cedb;bord
 textarea{min-height:100px;resize:vertical}button{background:var(--blue);color:white;border:0;border-radius:8px;padding:10px 14px;font:inherit;font-weight:650;cursor:pointer;margin:8px 6px 0 0}
 button.secondary{background:#e9edf5;color:var(--ink)}button:disabled{opacity:.55;cursor:not-allowed}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.small{color:var(--muted);font-size:.92rem}.status{padding:10px;border-radius:8px;background:var(--blue2);margin:10px 0;white-space:pre-wrap}.error{background:#fff0f0;color:var(--red)}
-.theorem{border:1px solid var(--line);border-radius:12px;padding:15px;margin:12px 0}.meta{font-size:.88rem;color:var(--muted)}.item{background:#f8faff;border-left:3px solid #9db6ed;padding:10px 12px;margin:9px 0;overflow-wrap:anywhere}.item p{margin:5px 0;white-space:pre-wrap}.item a{color:#254f9e;text-decoration:underline;overflow-wrap:anywhere}.asy-block{border:1px solid var(--line);border-radius:8px;padding:10px;margin:10px 0;background:#fff}.asy-block pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f5f9;padding:10px;border-radius:6px;overflow:auto}.asy-block code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.9rem}.asy-preview{width:100%;min-height:180px;border:1px solid var(--line);border-radius:6px;background:white;margin-top:8px}.item a{color:#254f9e;text-decoration:underline;overflow-wrap:anywhere}.asy-block{border:1px solid var(--line);border-radius:8px;padding:10px;margin:10px 0;background:#fff}.asy-block pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f5f9;padding:10px;border-radius:6px;overflow:auto}.asy-block code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.9rem}.actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.actions button{margin:0}.hidden{display:none!important}.tag{display:inline-block;background:#edf1f8;border-radius:99px;padding:2px 9px;font-size:.82rem;margin:2px}
+.theorem{border:1px solid var(--line);border-radius:12px;padding:15px;margin:12px 0}.meta{font-size:.88rem;color:var(--muted)}.item{background:#f8faff;border-left:3px solid #9db6ed;padding:10px 12px;margin:9px 0;overflow-wrap:anywhere}.item p{margin:5px 0;white-space:pre-wrap}.item a{color:#254f9e;text-decoration:underline;overflow-wrap:anywhere}.asy-block{border:1px solid var(--line);border-radius:8px;padding:10px;margin:10px 0;background:#fff}.asy-block pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f5f9;padding:10px;border-radius:6px;overflow:auto}.asy-block code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.9rem}.asy-preview{display:block;max-width:100%;min-height:40px;border:1px solid var(--line);border-radius:6px;background:white;margin-top:8px}.asy-preview.hidden{display:none}.item a{color:#254f9e;text-decoration:underline;overflow-wrap:anywhere}.asy-block{border:1px solid var(--line);border-radius:8px;padding:10px;margin:10px 0;background:#fff}.asy-block pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f5f9;padding:10px;border-radius:6px;overflow:auto}.asy-block code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.9rem}.actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.actions button{margin:0}.hidden{display:none!important}.tag{display:inline-block;background:#edf1f8;border-radius:99px;padding:2px 9px;font-size:.82rem;margin:2px}
 @media(max-width:650px){.row{grid-template-columns:1fr}header{padding:20px}}
 </style>
 </head>
@@ -105,10 +105,8 @@ function renderContent(value) {
     const code = match[1];
     const codeId = 'asy-' + Math.random().toString(36).slice(2, 10);
     html += '<div class="asy-block"><strong>Asymptote diagram</strong><pre><code>' + esc(code) + '</code></pre>' +
-      '<form class="asy-render-form" method="post" action="https://asymptote.ualberta.ca:10007/?f=svg" target="' + codeId + '">' +
-      '<textarea name="asy-source" class="asy-source-input" hidden>' + esc(code) + '</textarea>' +
-      '<button type="button" class="secondary" data-render-asy="' + codeId + '">Render diagram here</button></form>' +
-      '<iframe name="' + codeId + '" title="Rendered Asymptote diagram" class="asy-preview" loading="lazy"></iframe>' +
+      '<button type="button" class="secondary" data-render-asy="' + esc(encodeURIComponent(code)) + '">Render diagram here</button>' +
+      '<div class="asy-render-status" aria-live="polite"></div><img class="asy-preview hidden" alt="Rendered Asymptote diagram">' +
       '<p class="small">Rendering uses the public Asymptote compiler service.</p></div>';
     last = match.index + match[0].length;
   }
@@ -228,13 +226,29 @@ function renderPlainText(text) {
   document.addEventListener('click',e=>{
     const renderButton = e.target.closest('button[data-render-asy]');
     if (renderButton) {
-      const form = renderButton.closest('form.asy-render-form');
-      if (form) {
-        renderButton.disabled = true;
-        renderButton.textContent = 'Sending code…';
-        form.submit();
-        setTimeout(()=>{renderButton.disabled=false;renderButton.textContent='Render diagram here';},1500);
-      }
+      const block = renderButton.closest('.asy-block');
+      const status = block?.querySelector('.asy-render-status');
+      const preview = block?.querySelector('.asy-preview');
+      if (!block || !status || !preview) return;
+      renderButton.disabled = true;
+      status.textContent = 'Compiling Asymptote…';
+      fetch('https://asymptote.ualberta.ca:10007/?f=svg', {
+        method: 'POST',
+        headers: {'Content-Type': 'text/plain;charset=UTF-8'},
+        body: decodeURIComponent(renderButton.dataset.renderAsy || '')
+      }).then(async response => {
+        if (!response.ok) throw new Error('Compiler returned HTTP ' + response.status);
+        const svg = await response.text();
+        if (!svg.trim().startsWith('<svg') && !svg.trim().startsWith('<?xml')) throw new Error('Compiler did not return SVG. Check the Asymptote code.');
+        const url = URL.createObjectURL(new Blob([svg], {type:'image/svg+xml'}));
+        if (preview.dataset.objectUrl) URL.revokeObjectURL(preview.dataset.objectUrl);
+        preview.src = url;
+        preview.dataset.objectUrl = url;
+        preview.classList.remove('hidden');
+        status.textContent = 'Diagram rendered.';
+      }).catch(error => {
+        status.textContent = 'Could not render in-page. The public compiler may block browser requests (CORS) or the code may have an error. ' + error.message;
+      }).finally(() => { renderButton.disabled = false; });
       return;
     }
     const b=e.target.closest('button[data-action]'); if(!b)return;
