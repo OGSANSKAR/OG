@@ -94,7 +94,34 @@ button.secondary{background:#e9edf5;color:var(--ink)}button:disabled{opacity:.55
   const search = document.getElementById('search');
   let db = null, currentUser = null, allTheorems = [];
 
-  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function renderContent(value) {
+  const text = String(value ?? '');
+  const urlPattern = /https?:\/\/[^\s<>"']+/gi;
+  let html = '', last = 0, match;
+
+  while ((match = urlPattern.exec(text)) !== null) {
+    let url = match[0];
+    let end = url.length;
+
+    while (end > 0 && /[.,;:!?)]/.test(url[end - 1])) end--;
+
+    const cleanUrl = url.slice(0, end);
+    html += esc(text.slice(last, match.index)).replace(/\n/g, '<br>');
+
+    if (cleanUrl) {
+      const safeUrl = esc(cleanUrl);
+      html += '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer">' + safeUrl + '</a>';
+    }
+
+    html += esc(url.slice(end));
+    last = match.index + url.length;
+  }
+
+  html += esc(text.slice(last)).replace(/\n/g, '<br>');
+  return html;
+}
   function message(text, bad=false) {
     statusBox.textContent = text;
     statusBox.classList.toggle('error', bad);
@@ -133,7 +160,7 @@ button.secondary{background:#e9edf5;color:var(--ink)}button:disabled{opacity:.55
       <article class="theorem">
         <h3>${esc(t.name)}</h3>
         <div class="meta">${esc(t.topic || 'Other')} · Added ${new Date(t.created_at).toLocaleDateString()}${t.source ? ' · Source: '+esc(t.source) : ''}</div>
-        <p class="statement">${esc(t.statement).replace(/\n/g,'<br>')}</p>
+        <p class="statement">${renderContent(t.statement)}</p>
         <div>${(t.tags||[]).map(tag=>`<span class="tag">${esc(tag)}</span>`).join('')}</div>
         <div class="actions" style="margin-top:12px">
           <button class="secondary" data-action="insight" data-id="${t.id}">Add insight</button>
