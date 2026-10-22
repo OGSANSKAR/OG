@@ -156,8 +156,9 @@ function renderPlainText(text) {
   return html + renderLineBreaks(text.slice(last));
 }
 function renderLineBreaks(text) {
-  // Convert LaTeX-style \\ to a line break, while keeping text safely escaped.
-  return esc(text).replace(/\\+/g, '<br>').replace(/\n/g, '<br>');
+  // Convert a literal pair of backslashes to a line break, preserving safe HTML escaping.
+  const lineBreakToken = String.fromCharCode(92).repeat(2);
+  return text.split(lineBreakToken).map(part => esc(part).replace(/\n/g, '<br>')).join('<br>');
 }
   function message(text, bad=false) {
     statusBox.textContent = text;
