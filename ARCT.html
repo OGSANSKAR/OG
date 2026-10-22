@@ -107,15 +107,36 @@ function renderContent(value) {
   while ((match = asyPattern.exec(text)) !== null) {
     html += renderPlainText(text.slice(last, match.index));
     const code = match[1];
-    const codeId = 'asy-' + Math.random().toString(36).slice(2, 10);
-    html += '<div class="asy-block"><strong>Asymptote diagram</strong><pre><code>' + esc(code) + '</code></pre>' +
-      '<button type="button" class="secondary" data-render-asy="' + esc(encodeURIComponent(code)) + '">Render diagram here</button>' +
-      '<div class="asy-render-status" aria-live="polite"></div><img class="asy-preview hidden" alt="Rendered Asymptote diagram">' +
-      '<p class="small">Rendering uses the public Asymptote compiler service.</p></div>';
+    html += '<div class="asy-block" data-asy-code="' + esc(encodeURIComponent(code)) + '"><div class="asy-render-status" aria-live="polite">Rendering diagram…</div><img class="asy-preview hidden" alt="Rendered Asymptote diagram"></div>';
     last = match.index + match[0].length;
   }
   html += renderPlainText(text.slice(last));
   return html;
+}
+async function renderAsymptoteBlocks(root) {
+  if (!root) return;
+  const blocks = root.querySelectorAll('.asy-block[data-asy-code]:not([data-asy-started])');
+  for (const block of blocks) {
+    block.dataset.asyStarted = '1';
+    const status = block.querySelector('.asy-render-status');
+    const preview = block.querySelector('.asy-preview');
+    try {
+      const code = decodeURIComponent(block.dataset.asyCode || '');
+      const response = await fetch('https://asymptote.ualberta.ca:10007/?f=svg', {
+        method: 'POST',
+        headers: {'Content-Type': 'text/plain;charset=UTF-8'},
+        body: code
+      });
+      if (!response.ok) throw new Error('Compiler returned HTTP ' + response.status);
+      const svg = await response.text();
+      if (!svg.trim().startsWith('<svg') && !svg.trim().startsWith('<?xml')) throw new Error('Compiler did not return SVG.');
+      preview.src = URL.createObjectURL(new Blob([svg], {type:'image/svg+xml'}));
+      preview.classList.remove('hidden');
+      status.remove();
+    } catch (error) {
+      status.textContent = 'Diagram could not be rendered automatically. The compiler may be unavailable or blocked by browser CORS. ' + error.message;
+    }
+  }
 }
 function renderPlainText(text) {
   const urlPattern = /https?:\/\/[^\s<>"']+/gi;
@@ -201,6 +222,7 @@ function renderPlainText(text) {
       </article>`;
     }).join('');
     renderMath();
+    renderAsymptoteBlocks(list);
   }
   async function showDetails(id, kind) {
     const target = document.getElementById(kind+'-'+id);
@@ -227,6 +249,7 @@ function renderPlainText(text) {
         (items.length ? items.map(x=>`<div class="item"><strong>${esc(x.title)}</strong><p class="meta">${esc(x.method||'Proof')}</p><p>${renderContent(x.content)}</p><div class="meta">By ${esc(x.author_name||'Contributor')} · ${new Date(x.created_at).toLocaleDateString()}</div></div>`).join('') : '<p class="small">No proofs yet.</p>');
     }
     renderMath();
+    renderAsymptoteBlocks(target);
   }
   function openContribution(kind,id) {
     if (!currentUser) { message('Please sign in before contributing.',true); return; }
@@ -257,33 +280,6 @@ function renderPlainText(text) {
     };
   }
   document.addEventListener('click',e=>{
-    const renderButton = e.target.closest('button[data-render-asy]');
-    if (renderButton) {
-      const block = renderButton.closest('.asy-block');
-      const status = block?.querySelector('.asy-render-status');
-      const preview = block?.querySelector('.asy-preview');
-      if (!block || !status || !preview) return;
-      renderButton.disabled = true;
-      status.textContent = 'Compiling Asymptote…';
-      fetch('https://asymptote.ualberta.ca:10007/?f=svg', {
-        method: 'POST',
-        headers: {'Content-Type': 'text/plain;charset=UTF-8'},
-        body: decodeURIComponent(renderButton.dataset.renderAsy || '')
-      }).then(async response => {
-        if (!response.ok) throw new Error('Compiler returned HTTP ' + response.status);
-        const svg = await response.text();
-        if (!svg.trim().startsWith('<svg') && !svg.trim().startsWith('<?xml')) throw new Error('Compiler did not return SVG. Check the Asymptote code.');
-        const url = URL.createObjectURL(new Blob([svg], {type:'image/svg+xml'}));
-        if (preview.dataset.objectUrl) URL.revokeObjectURL(preview.dataset.objectUrl);
-        preview.src = url;
-        preview.dataset.objectUrl = url;
-        preview.classList.remove('hidden');
-        status.textContent = 'Diagram rendered.';
-      }).catch(error => {
-        status.textContent = 'Could not render in-page. The public compiler may block browser requests (CORS) or the code may have an error. ' + error.message;
-      }).finally(() => { renderButton.disabled = false; });
-      return;
-    }
     const suggestion=e.target.closest('button[data-pick-theorem]');
     if (suggestion) {
       selectedTheoremId = suggestion.dataset.pickTheorem;
