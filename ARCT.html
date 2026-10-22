@@ -253,7 +253,7 @@ function renderPlainText(text) {
       if(isInsight) result=await db.from('arct_insights').insert(row);
       else { row.method=document.getElementById('contribMethod').value.trim(); result=await db.from('arct_proofs').insert(row); }
       if(result.error){alert('Could not save: '+result.error.message);return;}
-      root.innerHTML=''; const kind=isInsight?'insights':'proofs'; openSections.add(kind+'-'+id); await loadTheorems(); expandedTheorems.add(String(id)); renderList(); await showDetails(id,kind); message('Contribution saved.');
+      root.innerHTML=''; const kind=isInsight?'insights':'proofs'; await loadTheorems(); expandedTheorems.add(String(id)); renderList(); await showDetails(id,kind); message('Contribution saved.');
     };
   }
   document.addEventListener('click',e=>{
