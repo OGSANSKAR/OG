@@ -256,8 +256,9 @@ function renderPlainText(text) {
     }
     const b=e.target.closest('button[data-action]'); if(!b)return;
     const id=b.dataset.id, action=b.dataset.action;
-    if(action==='insight'||action==='proof')openContribution(action,id);
-    if(action==='show')showDetails(id);
+    if(action==='insight'||action==='proof') openContribution(action,id);
+    if(action==='insights') showDetails(id,'insights');
+    if(action==='proofs') showDetails(id,'proofs');
   });
   search.addEventListener('input',renderList);
   signupBtn.onclick=async()=>{
