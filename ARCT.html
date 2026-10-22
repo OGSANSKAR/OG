@@ -173,26 +173,29 @@ function renderPlainText(text) {
         <div class="actions" style="margin-top:12px">
           <button class="secondary" data-action="insight" data-id="${t.id}">Add insight</button>
           <button class="secondary" data-action="proof" data-id="${t.id}">Add proof</button>
-          <button class="secondary" data-action="show" data-id="${t.id}">View insights & proofs</button>
+          <button class="secondary" data-action="insights" data-id="${t.id}">View insights</button>
+          <button class="secondary" data-action="proofs" data-id="${t.id}">View proofs</button>
         </div>
-        <div id="details-${t.id}"></div>
+        <div id="insights-${t.id}"></div>
+        <div id="proofs-${t.id}"></div>
       </article>`).join('');
     renderMath();
   }
-  async function showDetails(id) {
-    const target = document.getElementById('details-'+id);
+  async function showDetails(id, kind) {
+    const target = document.getElementById(kind+'-'+id);
     if (!target) return;
-    target.innerHTML = '<p class="small">Loading contributions…</p>';
-    const [ir, pr] = await Promise.all([
-      db.from('arct_insights').select('*').eq('theorem_id',id).order('created_at',{ascending:true}),
-      db.from('arct_proofs').select('*').eq('theorem_id',id).order('created_at',{ascending:true})
-    ]);
-    if (ir.error || pr.error) { target.textContent='Could not load contributions.'; return; }
-    const insights = ir.data||[], proofs=pr.data||[];
-    target.innerHTML = `<h4>Insights (${insights.length})</h4>` +
-      (insights.length ? insights.map(x=>`<div class="item"><strong>${esc(x.title)}</strong><p>${renderContent(x.content)}</p><div class="meta">By ${esc(x.author_name||'Contributor')} · ${new Date(x.created_at).toLocaleDateString()}</div></div>`).join('') : '<p class="small">No insights yet.</p>') +
-      `<h4>Proofs (${proofs.length})</h4>` +
-      (proofs.length ? proofs.map(x=>`<div class="item"><strong>${esc(x.title)}</strong><p class="meta">${esc(x.method||'Proof')}</p><p>${renderContent(x.content)}</p><div class="meta">By ${esc(x.author_name||'Contributor')} · ${new Date(x.created_at).toLocaleDateString()}</div></div>`).join('') : '<p class="small">No proofs yet.</p>');
+    target.innerHTML = '<p class="small">Loading '+(kind==='insights'?'insights':'proofs')+'…</p>';
+    const table = kind === 'insights' ? 'arct_insights' : 'arct_proofs';
+    const {data, error} = await db.from(table).select('*').eq('theorem_id',id).order('created_at',{ascending:true});
+    if (error) { target.textContent='Could not load '+kind+'.'; return; }
+    const items = data || [];
+    if (kind === 'insights') {
+      target.innerHTML = '<h4>Insights ('+items.length+')</h4>' +
+        (items.length ? items.map(x=>`<div class="item"><strong>${esc(x.title)}</strong><p>${renderContent(x.content)}</p><div class="meta">By ${esc(x.author_name||'Contributor')} · ${new Date(x.created_at).toLocaleDateString()}</div></div>`).join('') : '<p class="small">No insights yet.</p>');
+    } else {
+      target.innerHTML = '<h4>Proofs ('+items.length+')</h4>' +
+        (items.length ? items.map(x=>`<div class="item"><strong>${esc(x.title)}</strong><p class="meta">${esc(x.method||'Proof')}</p><p>${renderContent(x.content)}</p><div class="meta">By ${esc(x.author_name||'Contributor')} · ${new Date(x.created_at).toLocaleDateString()}</div></div>`).join('') : '<p class="small">No proofs yet.</p>');
+    }
     renderMath();
   }
   function openContribution(kind,id) {
@@ -220,7 +223,7 @@ function renderPlainText(text) {
       if(isInsight) result=await db.from('arct_insights').insert(row);
       else { row.method=document.getElementById('contribMethod').value.trim(); result=await db.from('arct_proofs').insert(row); }
       if(result.error){alert('Could not save: '+result.error.message);return;}
-      root.innerHTML=''; await showDetails(id); message('Contribution saved.');
+      root.innerHTML=''; await showDetails(id, isInsight ? 'insights' : 'proofs'); message('Contribution saved.');
     };
   }
   document.addEventListener('click',e=>{
