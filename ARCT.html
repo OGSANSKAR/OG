@@ -124,7 +124,7 @@ async function renderAsymptoteBlocks(root) {
       const code = decodeURIComponent(block.dataset.asyCode || '');
       const response = await fetch('https://tbnhxqhmaeggcpghihnp.supabase.co/functions/v1/render-asymptote', {
         method: 'POST',
-        headers: {'Content-Type': 'text/plain;charset=UTF-8'},
+        headers: {'Content-Type': 'text/plain;charset=UTF-8', 'apikey': SUPABASE_KEY},
         body: code
       });
       if (!response.ok) throw new Error('Compiler returned HTTP ' + response.status);
