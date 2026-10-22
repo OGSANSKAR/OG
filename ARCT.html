@@ -157,7 +157,7 @@ function renderPlainText(text) {
 }
 function renderLineBreaks(text) {
   // Convert LaTeX-style \\ to a line break, while keeping text safely escaped.
-  return esc(text).replace(/\\\\/g, '<br>').replace(/\n/g, '<br>');
+  return esc(text).replace(/\\+/g, '<br>').replace(/\n/g, '<br>');
 }
   function message(text, bad=false) {
     statusBox.textContent = text;
