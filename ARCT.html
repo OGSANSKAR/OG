@@ -26,7 +26,7 @@ input,textarea,select{width:100%;padding:10px 11px;border:1px solid #c6cedb;bord
 textarea{min-height:100px;resize:vertical}button{background:var(--blue);color:white;border:0;border-radius:8px;padding:10px 14px;font:inherit;font-weight:650;cursor:pointer;margin:8px 6px 0 0}
 button.secondary{background:#e9edf5;color:var(--ink)}button:disabled{opacity:.55;cursor:not-allowed}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.small{color:var(--muted);font-size:.92rem}.status{padding:10px;border-radius:8px;background:var(--blue2);margin:10px 0;white-space:pre-wrap}.error{background:#fff0f0;color:var(--red)}
-.theorem{border:1px solid var(--line);border-radius:12px;padding:15px;margin:12px 0}.meta{font-size:.88rem;color:var(--muted)}.item{background:#f8faff;border-left:3px solid #9db6ed;padding:10px 12px;margin:9px 0;overflow-wrap:anywhere}.item p{margin:5px 0;white-space:pre-wrap}.item a{color:#254f9e;text-decoration:underline;overflow-wrap:anywhere}.asy-block{border:1px solid var(--line);border-radius:8px;padding:10px;margin:10px 0;background:#fff}.asy-block pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f5f9;padding:10px;border-radius:6px;overflow:auto}.asy-block code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.9rem}.asy-preview{display:block;max-width:100%;min-height:40px;border:1px solid var(--line);border-radius:6px;background:white;margin-top:8px}.asy-preview.hidden{display:none}.item a{color:#254f9e;text-decoration:underline;overflow-wrap:anywhere}.asy-block{border:1px solid var(--line);border-radius:8px;padding:10px;margin:10px 0;background:#fff}.asy-block pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f5f9;padding:10px;border-radius:6px;overflow:auto}.asy-block code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.9rem}.actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.actions button{margin:0}.hidden{display:none!important}.tag{display:inline-block;background:#edf1f8;border-radius:99px;padding:2px 9px;font-size:.82rem;margin:2px}
+.theorem{border:1px solid var(--line);border-radius:12px;padding:15px;margin:12px 0}.search-suggestions{border:1px solid var(--line);border-radius:8px;background:white;margin-top:4px;max-height:260px;overflow:auto;box-shadow:0 5px 18px #14274718}.search-suggestions button{display:block;width:100%;text-align:left;border-radius:0;margin:0;background:white;color:var(--ink);font-weight:500;border-bottom:1px solid var(--line)}.search-suggestions button:hover{background:var(--blue2)}.meta{font-size:.88rem;color:var(--muted)}.item{background:#f8faff;border-left:3px solid #9db6ed;padding:10px 12px;margin:9px 0;overflow-wrap:anywhere}.item p{margin:5px 0;white-space:pre-wrap}.item a{color:#254f9e;text-decoration:underline;overflow-wrap:anywhere}.asy-block{border:1px solid var(--line);border-radius:8px;padding:10px;margin:10px 0;background:#fff}.asy-block pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f5f9;padding:10px;border-radius:6px;overflow:auto}.asy-block code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.9rem}.asy-preview{display:block;max-width:100%;min-height:40px;border:1px solid var(--line);border-radius:6px;background:white;margin-top:8px}.asy-preview.hidden{display:none}.item a{color:#254f9e;text-decoration:underline;overflow-wrap:anywhere}.asy-block{border:1px solid var(--line);border-radius:8px;padding:10px;margin:10px 0;background:#fff}.asy-block pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f5f9;padding:10px;border-radius:6px;overflow:auto}.asy-block code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.9rem}.actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.actions button{margin:0}.hidden{display:none!important}.tag{display:inline-block;background:#edf1f8;border-radius:99px;padding:2px 9px;font-size:.82rem;margin:2px}
 @media(max-width:650px){.row{grid-template-columns:1fr}header{padding:20px}}
 </style>
 </head>
@@ -52,7 +52,8 @@ button.secondary{background:#e9edf5;color:var(--ink)}button:disabled{opacity:.55
   <section class="panel">
     <h2>Search the theorem library</h2>
     <label for="search">Search theorem names, statements, topics and tags</label>
-    <input id="search" type="search" placeholder="e.g. Euclid lemma, cyclic quadrilateral, invariants">
+    <input id="search" type="search" autocomplete="off" placeholder="Search theorem names, topics, tags…">
+    <div id="searchSuggestions" class="search-suggestions hidden" role="listbox"></div>
     <div id="count" class="small"></div>
     <div id="theoremList"><p class="small">Loading theorems…</p></div>
   </section>
@@ -92,7 +93,10 @@ button.secondary{background:#e9edf5;color:var(--ink)}button:disabled{opacity:.55
   const signoutBtn = document.getElementById('signoutBtn');
   const addBtn = document.getElementById('addTheoremBtn');
   const search = document.getElementById('search');
-  let db = null, currentUser = null, allTheorems = [];
+  const searchSuggestions = document.getElementById('searchSuggestions');
+  let db = null, currentUser = null, allTheorems = [], selectedTheoremId = null;
+  const expandedTheorems = new Set();
+  const openSections = new Set();
 
  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -156,34 +160,60 @@ function renderPlainText(text) {
     allTheorems = data || [];
     renderList();
   }
+  function renderSearchSuggestions() {
+    const q = search.value.trim().toLowerCase();
+    if (!q) { searchSuggestions.classList.add('hidden'); searchSuggestions.innerHTML=''; return; }
+    const matches = allTheorems.filter(t => [t.name,t.statement,t.topic,(t.tags||[]).join(' '),t.source].join(' ').toLowerCase().includes(q)).slice(0,12);
+    if (!matches.length) { searchSuggestions.innerHTML='<p class="small" style="padding:8px 12px">No matching theorems.</p>'; searchSuggestions.classList.remove('hidden'); return; }
+    searchSuggestions.innerHTML = matches.map(t=>'<button type="button" role="option" data-pick-theorem="'+esc(t.id)+'">'+esc(t.name)+' <span class="meta">· '+esc(t.topic||'Other')+'</span></button>').join('');
+    searchSuggestions.classList.remove('hidden');
+  }
   function renderList() {
     const q = search.value.trim().toLowerCase();
-    const matches = allTheorems.filter(t => [t.name,t.statement,t.topic,t.tags,t.source].join(' ').toLowerCase().includes(q));
-    document.getElementById('count').textContent = `${matches.length} theorem(s) shown`;
+    let matches = allTheorems.filter(t => [t.name,t.statement,t.topic,(t.tags||[]).join(' '),t.source].join(' ').toLowerCase().includes(q));
+    if (selectedTheoremId) matches = matches.filter(t => String(t.id) === String(selectedTheoremId));
+    document.getElementById('count').textContent = selectedTheoremId ? 'Selected theorem · '+matches.length+' shown' : (q ? matches.length+' matching theorem(s)' : allTheorems.length+' theorem(s) · Search to narrow the list');
     if (!matches.length) {
-      list.innerHTML = `<p class="small">${allTheorems.length ? 'No matching theorems.' : 'No theorems yet. Sign in and add the first one.'}</p>`;
+      list.innerHTML = '<p class="small">'+(allTheorems.length ? 'No matching theorems. Try another search.' : 'No theorems yet. Sign in and add the first one.')+'</p>';
       return;
     }
-    list.innerHTML = matches.map(t => `
+    list.innerHTML = (selectedTheoremId ? '<button class="secondary" data-action="clear-selection">← Back to all theorems</button>' : '') + matches.map(t => {
+      const id = String(t.id), expanded = expandedTheorems.has(id);
+      return `
       <article class="theorem">
         <h3>${esc(t.name)}</h3>
         <div class="meta">${esc(t.topic || 'Other')} · Added ${new Date(t.created_at).toLocaleDateString()}${t.source ? ' · Source: '+esc(t.source) : ''}</div>
-        <p class="statement">${renderContent(t.statement)}</p>
-        <div>${(t.tags||[]).map(tag=>`<span class="tag">${esc(tag)}</span>`).join('')}</div>
-        <div class="actions" style="margin-top:12px">
-          <button class="secondary" data-action="insight" data-id="${t.id}">Add insight</button>
-          <button class="secondary" data-action="proof" data-id="${t.id}">Add proof</button>
-          <button class="secondary" data-action="insights" data-id="${t.id}">View insights</button>
-          <button class="secondary" data-action="proofs" data-id="${t.id}">View proofs</button>
+        <div class="actions" style="margin-top:10px">
+          <button class="secondary" data-action="toggle-theorem" data-id="${esc(id)}">${expanded ? 'Close theorem ▲' : 'Open theorem ▼'}</button>
         </div>
-        <div id="insights-${t.id}"></div>
-        <div id="proofs-${t.id}"></div>
-      </article>`).join('');
+        <div id="theorem-content-${esc(id)}" class="${expanded ? '' : 'hidden'}">
+          <p class="statement">${renderContent(t.statement)}</p>
+          <div>${(t.tags||[]).map(tag=>`<span class="tag">${esc(tag)}</span>`).join('')}</div>
+          <div class="actions" style="margin-top:12px">
+            <button class="secondary" data-action="insight" data-id="${esc(id)}">Add insight</button>
+            <button class="secondary" data-action="proof" data-id="${esc(id)}">Add proof</button>
+            <button class="secondary" data-action="insights" data-id="${esc(id)}">${openSections.has('insights-'+id) ? 'Hide insights' : 'View insights'}</button>
+            <button class="secondary" data-action="proofs" data-id="${esc(id)}">${openSections.has('proofs-'+id) ? 'Hide proofs' : 'View proofs'}</button>
+          </div>
+          <div id="insights-${esc(id)}" class="${openSections.has('insights-'+id) ? '' : 'hidden'}"></div>
+          <div id="proofs-${esc(id)}" class="${openSections.has('proofs-'+id) ? '' : 'hidden'}"></div>
+        </div>
+      </article>`;
+    }).join('');
     renderMath();
   }
   async function showDetails(id, kind) {
     const target = document.getElementById(kind+'-'+id);
     if (!target) return;
+    const key = kind+'-'+id;
+    if (openSections.has(key)) {
+      openSections.delete(key);
+      target.classList.add('hidden');
+      renderList();
+      return;
+    }
+    openSections.add(key);
+    target.classList.remove('hidden');
     target.innerHTML = '<p class="small">Loading '+(kind==='insights'?'insights':'proofs')+'…</p>';
     const table = kind === 'insights' ? 'arct_insights' : 'arct_proofs';
     const {data, error} = await db.from(table).select('*').eq('theorem_id',id).order('created_at',{ascending:true});
@@ -223,7 +253,7 @@ function renderPlainText(text) {
       if(isInsight) result=await db.from('arct_insights').insert(row);
       else { row.method=document.getElementById('contribMethod').value.trim(); result=await db.from('arct_proofs').insert(row); }
       if(result.error){alert('Could not save: '+result.error.message);return;}
-      root.innerHTML=''; await showDetails(id, isInsight ? 'insights' : 'proofs'); message('Contribution saved.');
+      root.innerHTML=''; const kind=isInsight?'insights':'proofs'; openSections.add(kind+'-'+id); await loadTheorems(); expandedTheorems.add(String(id)); renderList(); await showDetails(id,kind); message('Contribution saved.');
     };
   }
   document.addEventListener('click',e=>{
@@ -254,13 +284,32 @@ function renderPlainText(text) {
       }).finally(() => { renderButton.disabled = false; });
       return;
     }
+    const suggestion=e.target.closest('button[data-pick-theorem]');
+    if (suggestion) {
+      selectedTheoremId = suggestion.dataset.pickTheorem;
+      const chosen = allTheorems.find(t=>String(t.id)===String(selectedTheoremId));
+      if (chosen) search.value = chosen.name;
+      searchSuggestions.classList.add('hidden');
+      expandedTheorems.add(String(selectedTheoremId));
+      renderList();
+      return;
+    }
     const b=e.target.closest('button[data-action]'); if(!b)return;
     const id=b.dataset.id, action=b.dataset.action;
+    if(action==='clear-selection') { selectedTheoremId=null; search.value=''; expandedTheorems.clear(); openSections.clear(); renderSearchSuggestions(); renderList(); return; }
+    if(action==='toggle-theorem') {
+      if(expandedTheorems.has(String(id))) {
+        expandedTheorems.delete(String(id));
+        openSections.delete('insights-'+id); openSections.delete('proofs-'+id);
+      } else expandedTheorems.add(String(id));
+      renderList(); return;
+    }
     if(action==='insight'||action==='proof') openContribution(action,id);
-    if(action==='insights') showDetails(id,'insights');
-    if(action==='proofs') showDetails(id,'proofs');
+    if(action==='insights'||action==='proofs') showDetails(id,action);
   });
-  search.addEventListener('input',renderList);
+  search.addEventListener('input',()=>{ selectedTheoremId=null; renderSearchSuggestions(); renderList(); });
+  search.addEventListener('focus',renderSearchSuggestions);
+  document.addEventListener('click',e=>{ if(!e.target.closest('#search') && !e.target.closest('#searchSuggestions')) searchSuggestions.classList.add('hidden'); });
   signupBtn.onclick=async()=>{
     if(!db)return;
     const email=document.getElementById('email').value.trim(),password=document.getElementById('password').value;
