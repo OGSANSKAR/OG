@@ -182,9 +182,9 @@ function renderContent(value) {
     if (ir.error || pr.error) { target.textContent='Could not load contributions.'; return; }
     const insights = ir.data||[], proofs=pr.data||[];
     target.innerHTML = `<h4>Insights (${insights.length})</h4>` +
-      (insights.length ? insights.map(x=>`<div class="item"><strong>${esc(x.title)}</strong><p>${esc(x.content).replace(/\n/g,'<br>')}</p><div class="meta">By ${esc(x.author_name||'Contributor')} · ${new Date(x.created_at).toLocaleDateString()}</div></div>`).join('') : '<p class="small">No insights yet.</p>') +
+      (insights.length ? insights.map(x=>`<div class="item"><strong>${esc(x.title)}</strong><p>${renderContent(x.content)}</p><div class="meta">By ${esc(x.author_name||'Contributor')} · ${new Date(x.created_at).toLocaleDateString()}</div></div>`).join('') : '<p class="small">No insights yet.</p>') +
       `<h4>Proofs (${proofs.length})</h4>` +
-      (proofs.length ? proofs.map(x=>`<div class="item"><strong>${esc(x.title)}</strong><p class="meta">${esc(x.method||'Proof')}</p><p>${esc(x.content).replace(/\n/g,'<br>')}</p><div class="meta">By ${esc(x.author_name||'Contributor')} · ${new Date(x.created_at).toLocaleDateString()}</div></div>`).join('') : '<p class="small">No proofs yet.</p>');
+      (proofs.length ? proofs.map(x=>`<div class="item"><strong>${esc(x.title)}</strong><p class="meta">${esc(x.method||'Proof')}</p><p>${renderContent(x.content)}</p><div class="meta">By ${esc(x.author_name||'Contributor')} · ${new Date(x.created_at).toLocaleDateString()}</div></div>`).join('') : '<p class="small">No proofs yet.</p>');
     renderMath();
   }
   function openContribution(kind,id) {
