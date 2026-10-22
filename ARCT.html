@@ -145,15 +145,19 @@ function renderPlainText(text) {
     let url = match[0], end = url.length;
     while (end > 0 && /[.,;:!?)]/.test(url[end - 1])) end--;
     const cleanUrl = url.slice(0, end);
-    html += esc(text.slice(last, match.index)).replace(/\n/g, '<br>');
+    html += renderLineBreaks(text.slice(last, match.index));
     if (cleanUrl) {
       const safeUrl = esc(cleanUrl);
       html += '<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer">' + safeUrl + '</a>';
     }
-    html += esc(url.slice(end));
+    html += renderLineBreaks(url.slice(end));
     last = match.index + url.length;
   }
-  return html + esc(text.slice(last)).replace(/\n/g, '<br>');
+  return html + renderLineBreaks(text.slice(last));
+}
+function renderLineBreaks(text) {
+  // Convert LaTeX-style \\ to a line break, while keeping text safely escaped.
+  return esc(text).replace(/\\\\/g, '<br>').replace(/\n/g, '<br>');
 }
   function message(text, bad=false) {
     statusBox.textContent = text;
