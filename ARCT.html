@@ -251,6 +251,14 @@ function renderLineBreaks(text) {
       renderList();
       return;
     }
+    // Keep the Insight and Proof panels mutually exclusive for each theorem.
+    const otherKind = kind === 'insights' ? 'proofs' : 'insights';
+    const otherKey = otherKind+'-'+id;
+    if (openSections.has(otherKey)) {
+      openSections.delete(otherKey);
+      const otherTarget = document.getElementById(otherKey);
+      if (otherTarget) otherTarget.classList.add('hidden');
+    }
     openSections.add(key);
     target.classList.remove('hidden');
     target.innerHTML = '<p class="small">Loading '+(kind==='insights'?'insights':'proofs')+'…</p>';
