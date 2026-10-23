@@ -242,21 +242,27 @@ function renderLineBreaks(text) {
     renderAsymptoteBlocks(list);
   }
   async function showDetails(id, kind) {
-    const target = document.getElementById(kind+'-'+id);
-    if (!target) return;
     const key = kind+'-'+id;
+    const target = document.getElementById(key);
+    if (!target) return;
+
+    // Each panel owns only its own open/closed state. Never change the other panel.
     if (openSections.has(key)) {
       openSections.delete(key);
       target.classList.add('hidden');
-      renderList();
       return;
     }
+
     openSections.add(key);
     target.classList.remove('hidden');
     target.innerHTML = '<p class="small">Loading '+(kind==='insights'?'insights':'proofs')+'…</p>';
+
     const table = kind === 'insights' ? 'arct_insights' : 'arct_proofs';
     const {data, error} = await db.from(table).select('*').eq('theorem_id',id).order('created_at',{ascending:true});
+    // If the user closed this panel while the request was running, do not repopulate it.
+    if (!openSections.has(key)) return;
     if (error) { target.textContent='Could not load '+kind+'.'; return; }
+
     const items = data || [];
     if (kind === 'insights') {
       target.innerHTML = '<h4>Insights ('+items.length+')</h4>' +
