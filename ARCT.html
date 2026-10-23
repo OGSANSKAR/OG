@@ -221,7 +221,7 @@ function renderLineBreaks(text) {
       const id = String(t.id), expanded = true;
       return `
       <article class="theorem">
-        <h3>${esc(t.name)}</h3>
+        <div class="actions" style="justify-content:space-between"><h3>${esc(t.name)}</h3>${currentUser && String(t.author_id)===String(currentUser.id) ? '<button class="secondary" data-action="edit-theorem" data-id="'+esc(id)+'">Edit theorem</button>' : ''}</div>
         <div class="meta">${esc(t.topic || 'Other')} · Added ${new Date(t.created_at).toLocaleDateString()}${t.source ? ' · Source: '+esc(t.source) : ''}</div>
         <div id="theorem-content-${esc(id)}">
           <p class="statement">${renderContent(t.statement)}</p>
@@ -260,13 +260,53 @@ function renderLineBreaks(text) {
     const items = data || [];
     if (kind === 'insights') {
       target.innerHTML = '<h4>Insights ('+items.length+')</h4>' +
-        (items.length ? items.map(x=>`<div class="item"><strong>${esc(x.title)}</strong><p>${renderContent(x.content)}</p><div class="meta">By ${esc(x.author_name||'Contributor')} · ${new Date(x.created_at).toLocaleDateString()}</div></div>`).join('') : '<p class="small">No insights yet.</p>');
+        (items.length ? items.map(x=>`<div class="item"><div class="actions" style="justify-content:space-between"><strong>${esc(x.title)}</strong>${currentUser && String(x.author_id)===String(currentUser.id) ? '<button class="secondary" data-action="edit-insight" data-id="'+esc(x.id)+'" data-parent-id="'+esc(id)+'">Edit</button>' : ''}</div><p>${renderContent(x.content)}</p><div class="meta">By ${esc(x.author_name||'Contributor')} · ${new Date(x.created_at).toLocaleDateString()}</div></div>`).join('') : '<p class="small">No insights yet.</p>');
     } else {
       target.innerHTML = '<h4>Proofs ('+items.length+')</h4>' +
-        (items.length ? items.map(x=>`<div class="item"><strong>${esc(x.title)}</strong><p class="meta">${esc(x.method||'Proof')}</p><p>${renderContent(x.content)}</p><div class="meta">By ${esc(x.author_name||'Contributor')} · ${new Date(x.created_at).toLocaleDateString()}</div></div>`).join('') : '<p class="small">No proofs yet.</p>');
+        (items.length ? items.map(x=>`<div class="item"><div class="actions" style="justify-content:space-between"><strong>${esc(x.title)}</strong>${currentUser && String(x.author_id)===String(currentUser.id) ? '<button class="secondary" data-action="edit-proof" data-id="'+esc(x.id)+'" data-parent-id="'+esc(id)+'">Edit</button>' : ''}</div><p class="meta">${esc(x.method||'Proof')}</p><p>${renderContent(x.content)}</p><div class="meta">By ${esc(x.author_name||'Contributor')} · ${new Date(x.created_at).toLocaleDateString()}</div></div>`).join('') : '<p class="small">No proofs yet.</p>');
     }
     renderMath();
     renderAsymptoteBlocks(target);
+  }
+  async function openEdit(kind, id, parentId=null) {
+    if (!currentUser) { message('Please sign in before editing.', true); return; }
+    const isTheorem = kind === 'theorem';
+    const table = isTheorem ? 'arct_theorems' : (kind === 'insight' ? 'arct_insights' : 'arct_proofs');
+    const {data: record, error: fetchError} = await db.from(table).select('*').eq('id', id).single();
+    if (fetchError || !record) { alert('Could not load this item: ' + (fetchError?.message || 'Record not found.')); return; }
+    if (String(record.author_id) !== String(currentUser.id)) { alert('You can edit only items you contributed.'); return; }
+    const root = document.getElementById('modalRoot');
+    const extra = isTheorem
+      ? '<label for="editTopic">Topic</label><select id="editTopic"><option>Number Theory</option><option>Algebra</option><option>Geometry</option><option>Combinatorics</option><option>Inequalities</option><option>Functional Equations</option><option>Other</option></select><label for="editTags">Tags (comma-separated)</label><input id="editTags" maxlength="500"><label for="editSource">Source / attribution</label><input id="editSource" maxlength="1000">'
+      : (kind === 'proof' ? '<label for="editMethod">Proof method (optional)</label><input id="editMethod" maxlength="120">' : '');
+    root.innerHTML = '<div style="position:fixed;inset:0;background:#0008;display:grid;place-items:center;padding:16px;z-index:10"><section class="panel" style="width:min(700px,100%);max-height:90vh;overflow:auto;margin:0"><h2>Edit '+(isTheorem?'theorem':kind)+'</h2><label for="editTitle">'+(isTheorem?'Theorem name':kind==='insight'?'Insight title':'Proof title')+'</label><input id="editTitle" maxlength="180"><label for="editContent">'+(isTheorem?'Statement':kind==='insight'?'Insight':'Proof')+'</label><textarea id="editContent" maxlength="'+(isTheorem?20000:30000)+'" style="min-height:190px"></textarea>'+extra+'<div class="actions"><button id="saveEdit">Save changes</button><button class="secondary" id="cancelEdit">Cancel</button></div><p class="small">Only the original contributor can edit this item.</p></section></div>';
+    document.getElementById('editTitle').value = isTheorem ? record.name : record.title;
+    document.getElementById('editContent').value = isTheorem ? record.statement : record.content;
+    if (isTheorem) {
+      document.getElementById('editTopic').value = record.topic || 'Other';
+      document.getElementById('editTags').value = (record.tags || []).join(', ');
+      document.getElementById('editSource').value = record.source || '';
+    }
+    if (kind === 'proof') document.getElementById('editMethod').value = record.method || '';
+    document.getElementById('cancelEdit').onclick = () => root.innerHTML = '';
+    document.getElementById('saveEdit').onclick = async () => {
+      const title = document.getElementById('editTitle').value.trim();
+      const content = document.getElementById('editContent').value.trim();
+      if (!title || !content) { alert('Please fill in both fields.'); return; }
+      let changes;
+      if (isTheorem) changes = {name:title, statement:content, topic:document.getElementById('editTopic').value, tags:document.getElementById('editTags').value.split(',').map(x=>x.trim()).filter(Boolean).slice(0,30), source:document.getElementById('editSource').value.trim()};
+      else { changes = {title, content}; if (kind === 'proof') changes.method = document.getElementById('editMethod').value.trim(); }
+      const {error} = await db.from(table).update(changes).eq('id', id).eq('author_id', currentUser.id);
+      if (error) { alert('Could not save changes: ' + error.message + '\nIf permissions block this, Supabase needs an UPDATE policy allowing authors to edit their own rows.'); return; }
+      root.innerHTML = '';
+      if (isTheorem) { await loadTheorems(); message('Theorem updated successfully.'); }
+      else {
+        const section = kind === 'insight' ? 'insights' : 'proofs';
+        openSections.delete(section+'-'+parentId);
+        await showDetails(parentId, section);
+        message((kind === 'insight' ? 'Insight' : 'Proof') + ' updated successfully.');
+      }
+    };
   }
   function openContribution(kind,id) {
     if (!currentUser) { message('Please sign in before contributing.',true); return; }
@@ -311,6 +351,9 @@ function renderLineBreaks(text) {
     const b=e.target.closest('button[data-action]'); if(!b)return;
     const id=b.dataset.id, action=b.dataset.action;
     if(action==='clear-selection') { selectedTheoremId=null; search.value=''; expandedTheorems.clear(); openSections.clear(); renderSearchSuggestions(); renderList(); return; }
+    if(action==='edit-theorem') openEdit('theorem', id);
+    if(action==='edit-insight') openEdit('insight', id, b.dataset.parentId);
+    if(action==='edit-proof') openEdit('proof', id, b.dataset.parentId);
     if(action==='insight'||action==='proof') openContribution(action,id);
     if(action==='insights'||action==='proofs') showDetails(id,action);
   });
