@@ -302,8 +302,12 @@ function renderLineBreaks(text) {
       let changes;
       if (isTheorem) changes = {name:title, statement:content, topic:document.getElementById('editTopic').value, tags:document.getElementById('editTags').value.split(',').map(x=>x.trim()).filter(Boolean).slice(0,30), source:document.getElementById('editSource').value.trim()};
       else { changes = {title, content}; if (kind === 'proof') changes.method = document.getElementById('editMethod').value.trim(); }
-      const {error} = await db.from(table).update(changes).eq('id', id).eq('author_id', currentUser.id);
-      if (error) { alert('Could not save changes: ' + error.message + '\nIf permissions block this, Supabase needs an UPDATE policy allowing authors to edit their own rows.'); return; }
+      const {data: updatedRows, error} = await db.from(table).update(changes).eq('id', id).eq('author_id', currentUser.id).select('id');
+      if (error) { alert('Could not save changes: ' + error.message + '\nThis may be a Supabase permission/RLS issue.'); return; }
+      if (!updatedRows || updatedRows.length === 0) {
+        alert('No changes were saved. Supabase is not allowing this update. In the Supabase SQL Editor, add an UPDATE policy for ' + table + ' that lets authenticated users update rows where auth.uid() = author_id. Then try again.');
+        return;
+      }
       root.innerHTML = '';
       if (isTheorem) { await loadTheorems(); message('Theorem updated successfully.'); }
       else {
