@@ -58,7 +58,14 @@ button.secondary{background:#e9edf5;color:var(--ink)}button:disabled{opacity:.55
   </section>
 
   <section class="panel">
-    <h2>Search the theorem library</h2>
+    
+  <section id="profilePanel" class="panel hidden">
+    <h2>My user page</h2>
+    <div id="profileSummary" class="status">Loading profile…</div>
+    <h3>My contributions</h3>
+    <div id="profileContributions"><p class="small">Loading contributions…</p></div>
+  </section>
+<h2>Search the theorem library</h2>
     <label for="search">Search theorem names, statements, topics and tags</label>
     <input id="search" type="search" autocomplete="off" placeholder="Search theorem names, topics, tags…">
     <div id="searchSuggestions" class="search-suggestions hidden" role="listbox"></div>
@@ -188,7 +195,44 @@ function renderLineBreaks(text) {
     if (currentUser) {
       const username = currentUser.user_metadata?.username || 'your account';
       message('Signed in as ' + username + '. You can contribute.');
-    } else message('You are browsing as a guest. Sign in to contribute.');
+      loadUserProfile();
+    } else {
+      document.getElementById('profilePanel').classList.add('hidden');
+      message('You are browsing as a guest. Sign in to contribute.');
+    }
+  }
+  async function loadUserProfile() {
+    const panel = document.getElementById('profilePanel');
+    const summary = document.getElementById('profileSummary');
+    const contributions = document.getElementById('profileContributions');
+    if (!currentUser) { panel.classList.add('hidden'); return; }
+    panel.classList.remove('hidden');
+    const meta = currentUser.user_metadata || {};
+    const fullName = [meta.first_name, meta.last_name].filter(Boolean).join(' ') || 'Name not provided';
+    const username = meta.username || 'Unknown username';
+    const previousVisit = meta.last_visited_at || null;
+    summary.innerHTML = '<strong>' + esc(fullName) + '</strong><br>Username: @' + esc(username) +
+      '<br>Last visited: ' + (previousVisit ? esc(new Date(previousVisit).toLocaleString()) : 'This is your first recorded visit');
+    const now = new Date().toISOString();
+    const {data: updatedUser} = await db.auth.updateUser({data:{...meta,last_visited_at:now}});
+    if (updatedUser?.user) currentUser = updatedUser.user;
+    contributions.innerHTML = '<p class="small">Loading your contributions…</p>';
+    const tables = [
+      {table:'arct_theorems',label:'Theorem',field:'name'},
+      {table:'arct_insights',label:'Insight',field:'title'},
+      {table:'arct_proofs',label:'Proof',field:'title'}
+    ];
+    const results = await Promise.all(tables.map(async item => {
+      const {data,error} = await db.from(item.table).select('id,'+item.field+',created_at').eq('author_id',currentUser.id).order('created_at',{ascending:false}).limit(200);
+      return {...item,data:data||[],error};
+    }));
+    if (results.some(x=>x.error)) {
+      contributions.innerHTML = '<p class="small">Could not load all contributions. Check SELECT permissions on the contribution tables.</p>';
+      return;
+    }
+    const all = results.flatMap(group=>group.data.map(row=>({title:row[group.field],type:group.label,date:row.created_at})))
+      .sort((a,b)=>new Date(b.date)-new Date(a.date));
+    contributions.innerHTML = all.length ? all.map(item=>'<div class="item"><strong>'+esc(item.title)+'</strong><div class="meta">'+esc(item.type)+' · '+new Date(item.date).toLocaleString()+'</div></div>').join('') : '<p class="small">You have not contributed anything yet.</p>';
   }
   function renderMath() {
     if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise().catch(()=>{});
