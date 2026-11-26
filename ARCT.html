@@ -59,6 +59,17 @@ button.secondary{background:#e9edf5;color:var(--ink)}button:disabled{opacity:.55
 
   <section class="panel">
     
+  <section class="panel" id="directoryPanel">
+    <h2>Contributor directory</h2>
+    <p class="small">Browse ARCT contributors and open their public profile pages.</p>
+    <div id="directoryList"><p class="small">Loading contributors…</p></div>
+  </section>
+  <section class="panel hidden" id="publicProfilePanel">
+    <div class="actions" style="justify-content:space-between"><h2 id="publicProfileHeading">Contributor profile</h2><button class="secondary" id="closePublicProfile">Close profile</button></div>
+    <div id="publicProfileSummary" class="status"></div>
+    <h3>Contributions</h3>
+    <div id="publicProfileContributions"><p class="small">Loading…</p></div>
+  </section>
   <section id="profilePanel" class="panel hidden">
     <h2>My user page</h2>
     <div id="profileSummary" class="status">Loading profile…</div>
@@ -195,11 +206,59 @@ function renderLineBreaks(text) {
     if (currentUser) {
       const username = currentUser.user_metadata?.username || 'your account';
       message('Signed in as ' + username + '. You can contribute.');
+      syncPublicProfile().then(loadContributorDirectory);
       loadUserProfile();
     } else {
       document.getElementById('profilePanel').classList.add('hidden');
       message('You are browsing as a guest. Sign in to contribute.');
     }
+  }
+  async function syncPublicProfile() {
+    if (!currentUser) return;
+    const meta = currentUser.user_metadata || {};
+    const username = (meta.username || '').toLowerCase();
+    if (!username) return;
+    const row = {
+      user_id: currentUser.id,
+      username,
+      first_name: meta.first_name || '',
+      last_name: meta.last_name || '',
+      last_seen_at: new Date().toISOString()
+    };
+    const {error} = await db.from('arct_profiles').upsert(row,{onConflict:'user_id'});
+    if (error) console.warn('Could not sync public profile:',error.message);
+  }
+  async function loadContributorDirectory() {
+    const root=document.getElementById('directoryList');
+    const {data,error}=await db.from('arct_profiles').select('user_id,username,first_name,last_name,last_seen_at').order('username',{ascending:true}).limit(500);
+    if(error){root.innerHTML='<p class="small">Could not load contributor directory. The arct_profiles table and its public SELECT policy must be created in Supabase.</p>';return;}
+    if(!data?.length){root.innerHTML='<p class="small">No public profiles yet. Contributors appear here after they sign in.</p>';return;}
+    root.innerHTML=data.map(p=>'<div class="item"><button class="secondary" data-action="open-profile" data-user-id="'+esc(p.user_id)+'">@'+esc(p.username)+'</button><div class="meta">'+esc([p.first_name,p.last_name].filter(Boolean).join(' '))+'</div></div>').join('');
+  }
+  async function openPublicProfile(userId) {
+    const panel=document.getElementById('publicProfilePanel');
+    const summary=document.getElementById('publicProfileSummary');
+    const contributions=document.getElementById('publicProfileContributions');
+    panel.classList.remove('hidden');
+    summary.textContent='Loading profile…';
+    contributions.innerHTML='<p class="small">Loading contributions…</p>';
+    const {data:p,error}=await db.from('arct_profiles').select('user_id,username,first_name,last_name,last_seen_at').eq('user_id',userId).single();
+    if(error||!p){summary.textContent='This public profile could not be found.';contributions.innerHTML='';return;}
+    document.getElementById('publicProfileHeading').textContent='@'+p.username;
+    summary.innerHTML='<strong>'+esc([p.first_name,p.last_name].filter(Boolean).join(' ')||'Name not provided')+'</strong><br>Username: @'+esc(p.username)+'<br>Last visited: '+(p.last_seen_at?esc(new Date(p.last_seen_at).toLocaleString()):'Not available');
+    const groups=[
+      {table:'arct_theorems',label:'Theorem',field:'name'},
+      {table:'arct_insights',label:'Insight',field:'title'},
+      {table:'arct_proofs',label:'Proof',field:'title'}
+    ];
+    const results=await Promise.all(groups.map(async g=>{
+      const {data,error}=await db.from(g.table).select('id,'+g.field+',created_at').eq('author_id',userId).order('created_at',{ascending:false}).limit(200);
+      return {...g,data:data||[],error};
+    }));
+    if(results.some(x=>x.error)){contributions.innerHTML='<p class="small">Could not load contributions. Check public SELECT policies on the contribution tables.</p>';return;}
+    const all=results.flatMap(g=>g.data.map(x=>({title:x[g.field],type:g.label,date:x.created_at}))).sort((a,b)=>new Date(b.date)-new Date(a.date));
+    contributions.innerHTML=all.length?all.map(x=>'<div class="item"><strong>'+esc(x.title)+'</strong><div class="meta">'+esc(x.type)+' · '+new Date(x.date).toLocaleString()+'</div></div>').join(''):'<p class="small">No contributions yet.</p>';
+    panel.scrollIntoView({behavior:'smooth',block:'start'});
   }
   async function loadUserProfile() {
     const panel = document.getElementById('profilePanel');
@@ -400,6 +459,11 @@ function renderLineBreaks(text) {
       root.innerHTML=''; const kind=isInsight?'insights':'proofs'; await loadTheorems(); expandedTheorems.add(String(id)); renderList(); await showDetails(id,kind); message('Contribution saved.');
     };
   }
+  document.getElementById('closePublicProfile').onclick=()=>document.getElementById('publicProfilePanel').classList.add('hidden');
+  document.addEventListener('click',e=>{
+    const profileButton=e.target.closest('button[data-action="open-profile"]');
+    if(profileButton){openPublicProfile(profileButton.dataset.userId);return;}
+  });
   document.addEventListener('click',e=>{
     const suggestion=e.target.closest('button[data-pick-theorem]');
     if (suggestion) {
