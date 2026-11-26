@@ -541,7 +541,7 @@ function renderLineBreaks(text) {
   }
   try {
     db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-    db.auth.getSession().then(({data})=>{currentUser=data.session?.user||null;refreshAuthUI();});
+    db.auth.getSession().then(({data})=>{currentUser=data.session?.user||null;refreshAuthUI();loadContributorDirectory();});
     db.auth.onAuthStateChange((_event,session)=>{currentUser=session?.user||null;refreshAuthUI();});
     loadTheorems();
   } catch(e) { message('Could not start ARCT: '+e.message,true); }
