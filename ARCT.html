@@ -230,10 +230,10 @@ function renderLineBreaks(text) {
   }
   async function loadContributorDirectory() {
     const root=document.getElementById('directoryList');
-    const {data,error}=await db.from('arct_profiles').select('user_id,username,first_name,last_name,last_seen_at').order('username',{ascending:true}).limit(500);
+    const {data,error}=await db.from('arct_profiles').select('user_id,username,last_seen_at').order('username',{ascending:true}).limit(500);
     if(error){root.innerHTML='<p class="small">Could not load contributor directory. The arct_profiles table and its public SELECT policy must be created in Supabase.</p>';return;}
     if(!data?.length){root.innerHTML='<p class="small">No public profiles yet. Contributors appear here after they sign in.</p>';return;}
-    root.innerHTML=data.map(p=>'<div class="item"><button class="secondary" data-action="open-profile" data-user-id="'+esc(p.user_id)+'">@'+esc(p.username)+'</button><div class="meta">'+esc([p.first_name,p.last_name].filter(Boolean).join(' '))+'</div></div>').join('');
+    root.innerHTML=data.map(p=>'<div class="item"><button class="secondary" data-action="open-profile" data-user-id="'+esc(p.user_id)+'">@'+esc(p.username)+'</button></div>').join('');
   }
   async function openPublicProfile(userId) {
     const panel=document.getElementById('publicProfilePanel');
@@ -242,10 +242,10 @@ function renderLineBreaks(text) {
     panel.classList.remove('hidden');
     summary.textContent='Loading profile…';
     contributions.innerHTML='<p class="small">Loading contributions…</p>';
-    const {data:p,error}=await db.from('arct_profiles').select('user_id,username,first_name,last_name,last_seen_at').eq('user_id',userId).single();
+    const {data:p,error}=await db.from('arct_profiles').select('user_id,username,last_seen_at').eq('user_id',userId).single();
     if(error||!p){summary.textContent='This public profile could not be found.';contributions.innerHTML='';return;}
     document.getElementById('publicProfileHeading').textContent='@'+p.username;
-    summary.innerHTML='<strong>'+esc([p.first_name,p.last_name].filter(Boolean).join(' ')||'Name not provided')+'</strong><br>Username: @'+esc(p.username)+'<br>Last visited: '+(p.last_seen_at?esc(new Date(p.last_seen_at).toLocaleString()):'Not available');
+    summary.innerHTML='<strong>@'+esc(p.username)+'</strong><br>Last visited: '+(p.last_seen_at?esc(new Date(p.last_seen_at).toLocaleString()):'Not available');
     const groups=[
       {table:'arct_theorems',label:'Theorem',field:'name'},
       {table:'arct_insights',label:'Insight',field:'title'},
