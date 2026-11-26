@@ -38,12 +38,20 @@ button.secondary{background:#e9edf5;color:var(--ink)}button:disabled{opacity:.55
 <main>
   <section class="panel">
     <h2>Account</h2>
-    <p class="small">Anyone can browse. Sign up or sign in to contribute theorems, insights and proofs. Use an email you can access.</p>
+    <p class="small">Anyone can browse. Create an account or sign in with a username and password. No email address is needed.</p>
     <div id="authStatus" class="status">Checking configuration…</div>
     <div id="authForms">
-      <div class="row">
-        <div><label for="email">Email</label><input id="email" type="email" autocomplete="email" placeholder="you@example.com"></div>
-        <div><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" placeholder="At least 8 characters"></div>
+      <label for="username">Username</label>
+      <input id="username" type="text" autocomplete="username" maxlength="30" placeholder="Choose a username">
+      <label for="password">Password</label>
+      <input id="password" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+      <div id="signupExtra">
+        <label for="confirmPassword">Confirm password</label>
+        <input id="confirmPassword" type="password" autocomplete="new-password" placeholder="Re-enter your password">
+        <div class="row">
+          <div><label for="firstName">First name</label><input id="firstName" type="text" maxlength="80" autocomplete="given-name" placeholder="First name"></div>
+          <div><label for="lastName">Last name</label><input id="lastName" type="text" maxlength="80" autocomplete="family-name" placeholder="Last name"></div>
+        </div>
       </div>
       <button id="signupBtn">Create account</button><button id="signinBtn" class="secondary">Sign in</button><button id="signoutBtn" class="secondary hidden">Sign out</button>
     </div>
@@ -176,8 +184,11 @@ function renderLineBreaks(text) {
     signupBtn.classList.toggle('hidden', !!currentUser);
     signinBtn.classList.toggle('hidden', !!currentUser);
     signoutBtn.classList.toggle('hidden', !currentUser);
-    if (currentUser) message('Signed in as ' + currentUser.email + '. You can contribute.');
-    else message('You are browsing as a guest. Sign in to contribute.');
+    document.getElementById('signupExtra').classList.toggle('hidden', !!currentUser);
+    if (currentUser) {
+      const username = currentUser.user_metadata?.username || 'your account';
+      message('Signed in as ' + username + '. You can contribute.');
+    } else message('You are browsing as a guest. Sign in to contribute.');
   }
   function renderMath() {
     if (window.MathJax && window.MathJax.typesetPromise) window.MathJax.typesetPromise().catch(()=>{});
@@ -337,7 +348,7 @@ function renderLineBreaks(text) {
       const title=document.getElementById('contribTitle').value.trim();
       const content=document.getElementById('contribContent').value.trim();
       if(!title||!content){alert('Please fill in both the title and content.');return;}
-      const row={theorem_id:id,title,content,author_id:currentUser.id,author_name:(currentUser.user_metadata?.display_name||currentUser.email?.split('@')[0]||'Contributor')};
+      const row={theorem_id:id,title,content,author_id:currentUser.id,author_name:(currentUser.user_metadata?.display_name||currentUser.user_metadata?.username||'Contributor')};
       let result;
       if(isInsight) result=await db.from('arct_insights').insert(row);
       else { row.method=document.getElementById('contribMethod').value.trim(); result=await db.from('arct_proofs').insert(row); }
@@ -369,20 +380,40 @@ function renderLineBreaks(text) {
   search.addEventListener('input',()=>{ selectedTheoremId=null; renderSearchSuggestions(); renderList(); });
   search.addEventListener('focus',renderSearchSuggestions);
   document.addEventListener('click',e=>{ if(!e.target.closest('#search') && !e.target.closest('#searchSuggestions')) searchSuggestions.classList.add('hidden'); });
+  function usernameToAuthEmail(username) {
+    // Supabase password auth requires an email or phone. This synthetic address
+    // lets ARCT offer username/password accounts without collecting real email.
+    return username.toLowerCase() + '@users.ogsanskar.com';
+  }
   signupBtn.onclick=async()=>{
     if(!db)return;
-    const email=document.getElementById('email').value.trim(),password=document.getElementById('password').value;
-    if(!email||password.length<8){message('Enter a valid email and a password of at least 8 characters.',true);return;}
-    const {data,error}=await db.auth.signUp({email,password});
+    const username=document.getElementById('username').value.trim();
+    const password=document.getElementById('password').value;
+    const confirmPassword=document.getElementById('confirmPassword').value;
+    const firstName=document.getElementById('firstName').value.trim();
+    const lastName=document.getElementById('lastName').value.trim();
+    if(!/^[A-Za-z0-9._-]{3,30}$/.test(username)){message('Username must be 3–30 characters and use only letters, numbers, dots, underscores or hyphens.',true);return;}
+    if(password.length<8){message('Password must contain at least 8 characters.',true);return;}
+    if(password!==confirmPassword){message('The passwords do not match.',true);return;}
+    if(!firstName||!lastName){message('Please enter both your first name and last name.',true);return;}
+    const displayName=firstName+' '+lastName;
+    const {data,error}=await db.auth.signUp({
+      email:usernameToAuthEmail(username),
+      password,
+      options:{data:{username:username.toLowerCase(),first_name:firstName,last_name:lastName,display_name:displayName}}
+    });
     if(error){message(error.message,true);return;}
     if(data.session){currentUser=data.user;refreshAuthUI();}
-    else message('Account request received. Check your email for a confirmation link, then return here and sign in.');
+    else message('Account created, but Supabase is still requiring confirmation. Disable email confirmations in Supabase Authentication settings, then try again.',true);
   };
   signinBtn.onclick=async()=>{
     if(!db)return;
-    const email=document.getElementById('email').value.trim(),password=document.getElementById('password').value;
-    const {data,error}=await db.auth.signInWithPassword({email,password});
-    if(error){message(error.message,true);return;}
+    const username=document.getElementById('username').value.trim();
+    const password=document.getElementById('password').value;
+    if(!/^[A-Za-z0-9._-]{3,30}$/.test(username)){message('Enter a valid username.',true);return;}
+    if(!password){message('Enter your password.',true);return;}
+    const {data,error}=await db.auth.signInWithPassword({email:usernameToAuthEmail(username),password});
+    if(error){message('Could not sign in. Check your username and password.',true);return;}
     currentUser=data.user;refreshAuthUI();
   };
   signoutBtn.onclick=async()=>{await db.auth.signOut();currentUser=null;refreshAuthUI();};
